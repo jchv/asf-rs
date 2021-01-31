@@ -1,0 +1,9 @@
+[package]
+name = "asf-rs"
+version = "0.1.0"
+authors = ["John Chadwick <john@jchw.io>"]
+edition = "2018"
+
+[dependencies]
+nom = "6.0"
+uuid = "0.8.2"
