@@ -41,6 +41,58 @@ named!(pub object<Object>,
 named!(pub wchar_str<Vec<u16>>, terminated!(many0!(complete!(le_u16)), eof!()));
 
 #[derive(Debug, PartialEq)]
+pub struct StreamPropertiesData<'a> {
+    stream_type: Uuid,
+    error_correction_type: Uuid,
+    time_offset: u64,
+    flags: u16,
+    reserved: u32,
+    type_specific_data: &'a [u8],
+    error_correction_data: &'a [u8],
+}
+
+named!(pub stream_properties_data<StreamPropertiesData>,
+    do_parse!(
+        stream_type: guid >>
+        error_correction_type: guid >>
+        time_offset: le_u64 >>
+        type_specific_data_len: le_u32 >>
+        error_correction_data_len: le_u32 >>
+        flags: le_u16 >>
+        reserved: le_u32 >>
+        type_specific_data: take!(type_specific_data_len) >>
+        error_correction_data: take!(error_correction_data_len) >>
+
+        (StreamPropertiesData{
+            stream_type,
+            error_correction_type,
+            time_offset,
+            flags,
+            reserved,
+            type_specific_data,
+            error_correction_data,
+        })
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct HeaderExtensionData<'a> {
+    reserved_1: Uuid,
+    reserved_2: u16,
+    extension_data: &'a [u8],
+}
+
+named!(pub header_extension_data<HeaderExtensionData>,
+    do_parse!(
+        reserved_1: guid >>
+        reserved_2: le_u16 >>
+        extension_data_size: le_u32 >>
+        extension_data: take!(extension_data_size) >>
+        (HeaderExtensionData{reserved_1, reserved_2, extension_data})
+    )
+);
+
+#[derive(Debug, PartialEq)]
 pub struct ContentDescriptorData {
     title: Vec<u16>,
     author: Vec<u16>,
@@ -75,12 +127,20 @@ named!(pub content_descriptor_data<ContentDescriptorData>,
 
 #[derive(Debug, PartialEq)]
 pub enum HeaderObject<'a> {
+    StreamProperties(StreamPropertiesData<'a>),
     ContentDescriptor(ContentDescriptorData),
+    HeaderExtension(HeaderExtensionData<'a>),
     Unknown(Object<'a>)
 }
 
 named!(pub header_object<HeaderObject>,
     switch!(object,
+        Object{guid: STREAM_PROPERTIES_OBJECT, data} => do_parse!(
+            (HeaderObject::StreamProperties(stream_properties_data(data)?.1))
+        ) |
+        Object{guid: HEADER_EXTENSION_OBJECT, data} => do_parse!(
+            (HeaderObject::HeaderExtension(header_extension_data(data)?.1))
+        ) |
         Object{guid: CONTENT_DESCRIPTION_OBJECT, data} => do_parse!(
             (HeaderObject::ContentDescriptor(content_descriptor_data(data)?.1))
         ) |
@@ -178,6 +238,42 @@ mod tests {
                 0xa6, 0xd9, 0x00, 0xaa, 0x00, 0x62, 0xce, 0x6c,
             ]),
             Ok((&b""[..], HEADER_OBJECT))
+        );
+    }
+
+    #[test]
+    fn basic_stream_properties() {
+        assert_eq!(
+            header_object(&[
+                0x91, 0x07, 0xDC, 0xB7, 0xB7, 0xA9, 0xCF, 0x11, 0x8E, 0xE6,
+                0x00, 0xC0, 0x0C, 0x20, 0x53, 0x65, 0x72, 0x00, 0x00, 0x00, 
+                0x00, 0x00, 0x00, 0x00, 0x40, 0x9E, 0x69, 0xF8, 0x4D, 0x5B, 
+                0xCF, 0x11, 0xA8, 0xFD, 0x00, 0x80, 0x5F, 0x5C, 0x44, 0x2B, 
+                0x50, 0xCD, 0xC3, 0xBF, 0x8F, 0x61, 0xCF, 0x11, 0x8B, 0xB2, 
+                0x00, 0xAA, 0x00, 0xB4, 0xE2, 0x20, 0x00, 0x00, 0x00, 0x00, 
+                0x00, 0x00, 0x00, 0x00, 0x1C, 0x00, 0x00, 0x00, 0x08, 0x00, 
+                0x00, 0x00, 0x01, 0x00, 0x70, 0x33, 0x77, 0x00, 0x61, 0x01, 
+                0x01, 0x00, 0x80, 0x3E, 0x00, 0x00, 0xD0, 0x07, 0x00, 0x00, 
+                0x80, 0x02, 0x10, 0x00, 0x0A, 0x00, 0x00, 0x22, 0x00, 0x00, 
+                0x0E, 0x00, 0x80, 0x07, 0x00, 0x00, 0x01, 0x80, 0x02, 0x80,
+                0x02, 0x01, 0x00, 0x00,
+            ]),
+            Ok((&b""[..], HeaderObject::StreamProperties(StreamPropertiesData{
+                stream_type: AUDIO_MEDIA,
+                error_correction_type: AUDIO_SPREAD,
+                time_offset: 0,
+                flags: 1,
+                reserved: 7811952,
+                type_specific_data: &[
+                    0x61, 0x01, 0x01, 0x00, 0x80, 0x3E, 0x00, 0x00,
+                    0xD0, 0x07, 0x00, 0x00, 0x80, 0x02, 0x10, 0x00,
+                    0x0A, 0x00, 0x00, 0x22, 0x00, 0x00, 0x0E, 0x00,
+                    0x80, 0x07, 0x00, 0x00,
+                ],
+                error_correction_data: &[
+                    0x01, 0x80, 0x02, 0x80, 0x02, 0x01, 0x00, 0x00,
+                ],
+            }))),
         );
     }
 
