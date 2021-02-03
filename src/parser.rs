@@ -1,8 +1,42 @@
+use std::fmt;
+
 use uuid::Uuid;
 use nom::number::streaming::{le_u16, le_u32, le_u64, le_u8};
 
 use crate::guid::*;
 
+#[derive(PartialEq)]
+pub struct WideStr(Vec<u16>);
+
+impl WideStr {
+    fn from_str(s: &str) -> Self {
+        let w: Vec<u16> = s.encode_utf16().collect();
+        return WideStr(w);
+    }
+}
+
+impl From<Vec<u16>> for WideStr {
+    fn from(data: Vec<u16>) -> Self {
+        Self(data)
+    }
+}
+
+impl fmt::Debug for WideStr {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", String::from_utf16_lossy(&self.0))
+    }
+}
+
+impl fmt::Display for WideStr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", String::from_utf16_lossy(&self.0))
+    }
+}
+
+named!(pub wchar_str<WideStr>, map!(terminated!(many0!(complete!(le_u16)), eof!()), |x| WideStr(x)));
+named!(pub len16_prefixed_widestr<WideStr>, map!(length_count!(le_u16, le_u16), |x| WideStr(x)));
+named!(pub len32_prefixed_widestr<WideStr>, map!(length_count!(le_u32, le_u16), |x| WideStr(x)));
 
 named!(pub guid<Uuid>,
     do_parse!(
@@ -38,7 +72,50 @@ named!(pub object<Object>,
     )
 );
 
-named!(pub wchar_str<Vec<u16>>, terminated!(many0!(complete!(le_u16)), eof!()));
+#[derive(Debug, PartialEq)]
+pub struct FilePropertiesData {
+    file_id: Uuid,
+    file_size: u64,
+    creation_date: u64,
+    data_packets_count: u64,
+    play_duration: u64,
+    send_duration: u64,
+    preroll: u64,
+    flags: u32,
+    minimum_data_packet_size: u32,
+    maximum_data_packet_size: u32,
+    maximum_bitrate: u32,
+}
+
+named!(pub file_properties_data<FilePropertiesData>,
+    do_parse!(
+        file_id: guid >>
+        file_size: le_u64 >>
+        creation_date: le_u64 >>
+        data_packets_count: le_u64 >>
+        play_duration: le_u64 >>
+        send_duration: le_u64 >>
+        preroll: le_u64 >>
+        flags: le_u32 >>
+        minimum_data_packet_size: le_u32 >>
+        maximum_data_packet_size: le_u32 >>
+        maximum_bitrate: le_u32 >>
+
+        (FilePropertiesData{
+            file_id,
+            file_size,
+            creation_date,
+            data_packets_count,
+            play_duration,
+            send_duration,
+            preroll,
+            flags,
+            minimum_data_packet_size,
+            maximum_data_packet_size,
+            maximum_bitrate,
+        })
+    )
+);
 
 #[derive(Debug, PartialEq)]
 pub struct StreamPropertiesData<'a> {
@@ -93,15 +170,151 @@ named!(pub header_extension_data<HeaderExtensionData>,
 );
 
 #[derive(Debug, PartialEq)]
-pub struct ContentDescriptorData {
-    title: Vec<u16>,
-    author: Vec<u16>,
-    copyright: Vec<u16>,
-    description: Vec<u16>,
-    rating: Vec<u16>,
+pub struct CodecEntry<'a> {
+    codec_type: u16,
+    codec_name: WideStr,
+    codec_description: WideStr,
+    codec_information: &'a [u8],
 }
 
-named!(pub content_descriptor_data<ContentDescriptorData>,
+named!(pub codec_entry<CodecEntry>,
+    do_parse!(
+        codec_type: le_u16 >>
+        codec_name: len16_prefixed_widestr >>
+        codec_description: len16_prefixed_widestr >>
+        codec_information_len: le_u16 >>
+        codec_information: take!(codec_information_len) >>
+        (CodecEntry{codec_type, codec_name, codec_description, codec_information})
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct CodecListData<'a> {
+    reserved: Uuid,
+    codec_entries: Vec<CodecEntry<'a>>,
+}
+
+named!(pub codec_list_data<CodecListData>,
+    do_parse!(
+        reserved: guid >>
+        codec_entries: length_count!(le_u32, codec_entry) >>
+        (CodecListData{reserved, codec_entries})
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct Command {
+    presentation_time: u32,
+    type_index: u16,
+    command_name: WideStr,
+}
+
+named!(pub command<Command>,
+    do_parse!(
+        presentation_time: le_u32 >>
+        type_index: le_u16 >>
+        command_name: len16_prefixed_widestr >>
+        (Command{presentation_time, type_index, command_name})
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct ScriptCommandData {
+    reserved: Uuid,
+    command_types: Vec<WideStr>,
+    commands: Vec<Command>,
+}
+
+named!(pub script_command_data<ScriptCommandData>,
+    do_parse!(
+        reserved: guid >>
+        commands_count: le_u16 >>
+        command_types_count: le_u16 >>
+        command_types: count!(len16_prefixed_widestr, command_types_count.into()) >>
+        commands: count!(command, commands_count.into()) >>
+        (ScriptCommandData{reserved, command_types, commands})
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct Marker {
+    offset: u64,
+    presentation_time: u64,
+    send_time: u32,
+    flags: u32,
+    marker_description: WideStr,
+}
+
+named!(pub marker<Marker>,
+    do_parse!(
+        offset: le_u64 >>
+        presentation_time: le_u64 >>
+        entry_length: le_u16 >>
+        send_time: le_u32 >>
+        flags: le_u32 >>
+        marker_description: len32_prefixed_widestr >>
+        (Marker{offset, presentation_time, send_time, flags, marker_description})
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct MarkerData {
+    reserved_1: Uuid,
+    reserved_2: u16,
+    name: WideStr,
+    markers: Vec<Marker>,
+}
+
+named!(pub marker_data<MarkerData>,
+    do_parse!(
+        reserved_1: guid >>
+        markers_count: le_u32 >>
+        reserved_2: le_u16 >>
+        name: len16_prefixed_widestr >>
+        markers: count!(marker, markers_count as _) >>
+        (MarkerData{reserved_1, reserved_2, name, markers})
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct BitrateMutualExclusionData {
+    exclusion_type: Uuid,
+    stream_numbers: Vec<u16>,
+}
+
+named!(pub bitrate_mutual_exclusion_data<BitrateMutualExclusionData>,
+    do_parse!(
+        exclusion_type: guid >>
+        stream_numbers: length_count!(le_u16, le_u16) >>
+        (BitrateMutualExclusionData{exclusion_type, stream_numbers})
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct ErrorCorrectionData<'a> {
+    error_correction_type: Uuid,
+    error_correction_data: &'a [u8],
+}
+
+named!(pub error_correction_data<ErrorCorrectionData>,
+    do_parse!(
+        error_correction_type: guid >>
+        error_correction_data_length: le_u32 >>
+        error_correction_data: take!(error_correction_data_length) >>
+        (ErrorCorrectionData{error_correction_type, error_correction_data})
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct ContentDescriptionData {
+    title: WideStr,
+    author: WideStr,
+    copyright: WideStr,
+    description: WideStr,
+    rating: WideStr,
+}
+
+named!(pub content_description_data<ContentDescriptionData>,
     do_parse!(
         title_len: le_u16 >>
         author_len: le_u16 >>
@@ -115,7 +328,7 @@ named!(pub content_descriptor_data<ContentDescriptorData>,
         description: take!(description_len) >>
         rating: take!(rating_len) >>
 
-        (ContentDescriptorData{
+        (ContentDescriptionData{
             title: wchar_str(title)?.1,
             author: wchar_str(author)?.1,
             copyright: wchar_str(copyright)?.1,
@@ -126,23 +339,110 @@ named!(pub content_descriptor_data<ContentDescriptorData>,
 );
 
 #[derive(Debug, PartialEq)]
+pub struct ContentDescriptor<'a> {
+    name: WideStr,
+    value_type: u16,
+    value: &'a [u8],
+}
+
+named!(pub content_descriptor<ContentDescriptor>,
+    do_parse!(
+        name: len16_prefixed_widestr >>
+        value_type: le_u16 >>
+        value_len: le_u16 >>
+        value: take!(value_len) >>
+        (ContentDescriptor{name, value_type, value})
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct ExtendedContentDescriptionData<'a> {
+    descriptors: Vec<ContentDescriptor<'a>>,
+}
+
+named!(pub extended_content_description_data<ExtendedContentDescriptionData>,
+    do_parse!(
+        descriptors: length_count!(le_u16, content_descriptor) >>
+        (ExtendedContentDescriptionData{descriptors})
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct BitrateRecord {
+    flags: u16,
+    average_bitrate: u32,
+}
+
+named!(pub bitrate_record<BitrateRecord>,
+    do_parse!(
+        flags: le_u16 >>
+        average_bitrate: le_u32 >>
+        (BitrateRecord{flags, average_bitrate})
+    )
+);
+
+#[derive(Debug, PartialEq)]
+pub struct StreamBitratePropertiesData {
+    bitrate_records: Vec<BitrateRecord>
+}
+
+named!(pub stream_bitrate_properties_data<StreamBitratePropertiesData>,
+    do_parse!(
+        bitrate_records: length_count!(le_u16, bitrate_record) >>
+        (StreamBitratePropertiesData{bitrate_records})
+    )
+);
+
+#[derive(Debug, PartialEq)]
 pub enum HeaderObject<'a> {
+    FileProperties(FilePropertiesData),
     StreamProperties(StreamPropertiesData<'a>),
-    ContentDescriptor(ContentDescriptorData),
     HeaderExtension(HeaderExtensionData<'a>),
+    CodecList(CodecListData<'a>),
+    ScriptCommand(ScriptCommandData),
+    Marker(MarkerData),
+    BitrateMutualExclusion(BitrateMutualExclusionData),
+    ErrorCorrection(ErrorCorrectionData<'a>),
+    ContentDescription(ContentDescriptionData),
+    ExtendedContentDescription(ExtendedContentDescriptionData<'a>),
+    StreamBitrateProperties(StreamBitratePropertiesData),
     Unknown(Object<'a>)
 }
 
 named!(pub header_object<HeaderObject>,
     switch!(object,
+        Object{guid: FILE_PROPERTIES_OBJECT, data} => do_parse!(
+            (HeaderObject::FileProperties(file_properties_data(data)?.1))
+        ) |
         Object{guid: STREAM_PROPERTIES_OBJECT, data} => do_parse!(
             (HeaderObject::StreamProperties(stream_properties_data(data)?.1))
         ) |
         Object{guid: HEADER_EXTENSION_OBJECT, data} => do_parse!(
             (HeaderObject::HeaderExtension(header_extension_data(data)?.1))
         ) |
+        Object{guid: CODEC_LIST_OBJECT, data} => do_parse!(
+            (HeaderObject::CodecList(codec_list_data(data)?.1))
+        ) |
+        Object{guid: SCRIPT_COMMAND_OBJECT, data} => do_parse!(
+            (HeaderObject::ScriptCommand(script_command_data(data)?.1))
+        ) |
+        Object{guid: MARKER_OBJECT, data} => do_parse!(
+            (HeaderObject::Marker(marker_data(data)?.1))
+        ) |
+        Object{guid: BITRATE_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
+            (HeaderObject::BitrateMutualExclusion(bitrate_mutual_exclusion_data(data)?.1))
+        ) |
+        Object{guid: ERROR_CORRECTION_OBJECT, data} => do_parse!(
+            (HeaderObject::ErrorCorrection(error_correction_data(data)?.1))
+        ) |
         Object{guid: CONTENT_DESCRIPTION_OBJECT, data} => do_parse!(
-            (HeaderObject::ContentDescriptor(content_descriptor_data(data)?.1))
+            (HeaderObject::ContentDescription(content_description_data(data)?.1))
+        ) |
+        Object{guid: EXTENDED_CONTENT_DESCRIPTION_OBJECT, data} => do_parse!(
+            (HeaderObject::ExtendedContentDescription(extended_content_description_data(data)?.1))
+        ) |
+        Object{guid: STREAM_BITRATE_PROPERTIES_OBJECT, data} => do_parse!(
+            (HeaderObject::StreamBitrateProperties(stream_bitrate_properties_data(data)?.1))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )
@@ -315,12 +615,12 @@ mod tests {
                 0x00, 0x00, 0x00, 0x00,
             ]),
             Ok((&b""[..],
-                HeaderObject::ContentDescriptor(ContentDescriptorData{
-                    title: "The Matrix Part 2 of 2\0".encode_utf16().collect(),
-                    author: "confuzed\0".encode_utf16().collect(),
-                    copyright: vec![0],
-                    description: vec![0],
-                    rating: vec![0],
+                HeaderObject::ContentDescription(ContentDescriptionData{
+                    title: WideStr::from_str("The Matrix Part 2 of 2\0"),
+                    author: WideStr::from_str("confuzed\0"),
+                    copyright: WideStr::from_str("\0"),
+                    description: WideStr::from_str("\0"),
+                    rating: WideStr::from_str("\0"),
                 })
             ))
         )
