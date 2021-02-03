@@ -1,6 +1,7 @@
 pub mod bitrate_mutual_exclusion;
 pub mod codec_list;
 pub mod content_description;
+pub mod content_branding;
 pub mod error_correction;
 pub mod extended_content_description;
 pub mod file_properties;
@@ -17,6 +18,7 @@ use self::{
     bitrate_mutual_exclusion::*,
     codec_list::*,
     content_description::*,
+    content_branding::*,
     error_correction::*,
     extended_content_description::*,
     file_properties::*,
@@ -41,6 +43,7 @@ pub enum HeaderObject<'a> {
     ContentDescription(ContentDescriptionData),
     ExtendedContentDescription(ExtendedContentDescriptionData<'a>),
     StreamBitrateProperties(StreamBitratePropertiesData),
+    ContentBranding(ContentBrandingData<'a>),
     Unknown(Object<'a>)
 }
 
@@ -78,6 +81,9 @@ named!(pub header_object<HeaderObject>,
         ) |
         Object{guid: STREAM_BITRATE_PROPERTIES_OBJECT, data} => do_parse!(
             (HeaderObject::StreamBitrateProperties(stream_bitrate_properties_data(data)?.1))
+        ) |
+        Object{guid: CONTENT_BRANDING_OBJECT, data} => do_parse!(
+            (HeaderObject::ContentBranding(content_branding_data(data)?.1))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )
