@@ -53,6 +53,7 @@ pub enum HeaderObject<'a> {
     ContentEncryption(ContentEncryptionData<'a>),
     ExtendedContentEncryption(ExtendedContentEncryptionData<'a>),
     DigitalSignature(DigitalSignatureData<'a>),
+    Padding(usize),
     Unknown(Object<'a>)
 }
 
@@ -102,6 +103,9 @@ named!(pub header_object<HeaderObject>,
         ) |
         Object{guid: DIGITAL_SIGNATURE_OBJECT, data} => do_parse!(
             (HeaderObject::DigitalSignature(digital_signature_data(data)?.1))
+        ) |
+        Object{guid: PADDING_OBJECT, data} => do_parse!(
+            (HeaderObject::Padding(data.len()))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )
