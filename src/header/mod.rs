@@ -1,9 +1,11 @@
 pub mod bitrate_mutual_exclusion;
 pub mod codec_list;
-pub mod content_description;
 pub mod content_branding;
+pub mod content_description;
+pub mod content_encryption;
 pub mod error_correction;
 pub mod extended_content_description;
+pub mod extended_content_encryption;
 pub mod file_properties;
 pub mod header_extension;
 pub mod marker;
@@ -19,8 +21,10 @@ use self::{
     codec_list::*,
     content_description::*,
     content_branding::*,
+    content_encryption::*,
     error_correction::*,
     extended_content_description::*,
+    extended_content_encryption::*,
     file_properties::*,
     header_extension::*,
     marker::*,
@@ -44,6 +48,8 @@ pub enum HeaderObject<'a> {
     ExtendedContentDescription(ExtendedContentDescriptionData<'a>),
     StreamBitrateProperties(StreamBitratePropertiesData),
     ContentBranding(ContentBrandingData<'a>),
+    ContentEncryption(ContentEncryptionData<'a>),
+    ExtendedContentEncryption(ExtendedContentEncryptionData<'a>),
     Unknown(Object<'a>)
 }
 
@@ -84,6 +90,12 @@ named!(pub header_object<HeaderObject>,
         ) |
         Object{guid: CONTENT_BRANDING_OBJECT, data} => do_parse!(
             (HeaderObject::ContentBranding(content_branding_data(data)?.1))
+        ) |
+        Object{guid: CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
+            (HeaderObject::ContentEncryption(content_encryption_data(data)?.1))
+        ) |
+        Object{guid: EXTENDED_CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
+            (HeaderObject::ExtendedContentEncryption(extended_content_encryption_data(data)?.1))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )

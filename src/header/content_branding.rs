@@ -1,4 +1,4 @@
-use nom::number::streaming::{le_u32};
+use nom::number::streaming::le_u32;
 
 
 #[derive(Debug, PartialEq)]
