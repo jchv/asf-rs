@@ -24,8 +24,6 @@ use nom::number::streaming::{le_u32, le_u64, le_u8};
 use crate::{guid::*, object::*};
 
 use self::{
-    advanced_mutual_exclusion::*,
-    bandwidth_sharing::*,
     bitrate_mutual_exclusion::*,
     codec_list::*,
     content_description::*,
@@ -35,15 +33,11 @@ use self::{
     error_correction::*,
     extended_content_description::*,
     extended_content_encryption::*,
-    extended_stream_properties::*,
     file_properties::*,
-    group_mutual_exclusion::*,
     header_extension::*,
-    language_list::*,
     marker::*,
     script_command::*,
     stream_bitrate_properties::*,
-    stream_prioritization::*,
     stream_properties::*
 };
 
@@ -66,12 +60,6 @@ pub enum HeaderObject<'a> {
     ExtendedContentEncryption(ExtendedContentEncryptionData<'a>),
     DigitalSignature(DigitalSignatureData<'a>),
     Padding(usize),
-    ExtendedStreamProperties(ExtendedStreamPropertiesData<'a>),
-    AdvancedMutualExclusion(AdvancedMutualExclusionData),
-    GroupMutualExclusion(GroupMutualExclusionData),
-    StreamPrioritization(StreamPrioritizationData),
-    BandwidthSharing(BandwidthSharingData),
-    LanguageList(LanguageListData),
     Unknown(Object<'a>)
 }
 
@@ -124,24 +112,6 @@ named!(pub header_object<HeaderObject>,
         ) |
         Object{guid: PADDING_OBJECT, data} => do_parse!(
             (HeaderObject::Padding(data.len()))
-        ) |
-        Object{guid: EXTENDED_STREAM_PROPERTIES_OBJECT, data} => do_parse!(
-            (HeaderObject::ExtendedStreamProperties(extended_stream_properties_data(data)?.1))
-        ) |
-        Object{guid: ADVANCED_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
-            (HeaderObject::AdvancedMutualExclusion(advanced_mutual_exclusion_data(data)?.1))
-        ) |
-        Object{guid: GROUP_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
-            (HeaderObject::GroupMutualExclusion(group_mutual_exclusion_data(data)?.1))
-        ) |
-        Object{guid: STREAM_PRIORITIZATION_OBJECT, data} => do_parse!(
-            (HeaderObject::StreamPrioritization(stream_prioritization_data(data)?.1))
-        ) |
-        Object{guid: BANDWIDTH_SHARING_OBJECT, data} => do_parse!(
-            (HeaderObject::BandwidthSharing(bandwidth_sharing_data(data)?.1))
-        ) |
-        Object{guid: LANGUAGE_LIST_OBJECT, data} => do_parse!(
-            (HeaderObject::LanguageList(language_list_data(data)?.1))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )
