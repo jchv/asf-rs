@@ -1,3 +1,4 @@
+use nom::number::streaming::le_u8;
 use uuid::Uuid;
 
 
@@ -14,6 +15,16 @@ impl AsBytesMs for Uuid {
         ]
     }
 }
+
+named!(pub guid<Uuid>,
+    do_parse!(
+        b: count!(le_u8, 16) >>
+        (Uuid::from_bytes([
+            b[3], b[2], b[1], b[0], b[5], b[4], b[7], b[6],
+            b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15],
+        ]))
+    )
+);
 
 pub const HEADER_OBJECT: Uuid                                 = Uuid::from_u128(0x75b22630668e11cfa6d900aa0062ce6c);
 pub const DATA_OBJECT: Uuid                                   = Uuid::from_u128(0x75b22636668e11cfa6d900aa0062ce6c);
