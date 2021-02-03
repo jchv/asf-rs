@@ -10,6 +10,8 @@ use super::{
     group_mutual_exclusion::*,
     language_list::*,
     stream_prioritization::*,
+    metadata::{MetadataData, metadata_data},
+    metadata_library::{MetadataLibraryData, metadata_library_data},
 };
 
 #[derive(Debug, PartialEq)]
@@ -20,6 +22,8 @@ pub enum ExtensionHeaderObject<'a> {
     StreamPrioritization(StreamPrioritizationData),
     BandwidthSharing(BandwidthSharingData),
     LanguageList(LanguageListData),
+    Metadata(MetadataData<'a>),
+    MetadataLibrary(MetadataLibraryData<'a>),
     Unknown(Object<'a>)
 }
 
@@ -42,6 +46,12 @@ named!(pub extension_header_object<ExtensionHeaderObject>,
         ) |
         Object{guid: LANGUAGE_LIST_OBJECT, data} => do_parse!(
             (ExtensionHeaderObject::LanguageList(language_list_data(data)?.1))
+        ) |
+        Object{guid: METADATA_OBJECT, data} => do_parse!(
+            (ExtensionHeaderObject::Metadata(metadata_data(data)?.1))
+        ) |
+        Object{guid: METADATA_LIBRARY_OBJECT, data} => do_parse!(
+            (ExtensionHeaderObject::MetadataLibrary(metadata_library_data(data)?.1))
         ) |
         unknown => do_parse!((ExtensionHeaderObject::Unknown(unknown)))
     )

@@ -15,6 +15,8 @@ pub mod group_mutual_exclusion;
 pub mod header_extension;
 pub mod language_list;
 pub mod marker;
+pub mod metadata;
+pub mod metadata_library;
 pub mod script_command;
 pub mod stream_bitrate_properties;
 pub mod stream_prioritization;
