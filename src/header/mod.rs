@@ -3,6 +3,7 @@ pub mod codec_list;
 pub mod content_branding;
 pub mod content_description;
 pub mod content_encryption;
+pub mod digital_signature;
 pub mod error_correction;
 pub mod extended_content_description;
 pub mod extended_content_encryption;
@@ -22,6 +23,7 @@ use self::{
     content_description::*,
     content_branding::*,
     content_encryption::*,
+    digital_signature::*,
     error_correction::*,
     extended_content_description::*,
     extended_content_encryption::*,
@@ -50,6 +52,7 @@ pub enum HeaderObject<'a> {
     ContentBranding(ContentBrandingData<'a>),
     ContentEncryption(ContentEncryptionData<'a>),
     ExtendedContentEncryption(ExtendedContentEncryptionData<'a>),
+    DigitalSignature(DigitalSignatureData<'a>),
     Unknown(Object<'a>)
 }
 
@@ -96,6 +99,9 @@ named!(pub header_object<HeaderObject>,
         ) |
         Object{guid: EXTENDED_CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
             (HeaderObject::ExtendedContentEncryption(extended_content_encryption_data(data)?.1))
+        ) |
+        Object{guid: DIGITAL_SIGNATURE_OBJECT, data} => do_parse!(
+            (HeaderObject::DigitalSignature(digital_signature_data(data)?.1))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )
