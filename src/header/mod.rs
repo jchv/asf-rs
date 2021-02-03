@@ -7,6 +7,7 @@ pub mod digital_signature;
 pub mod error_correction;
 pub mod extended_content_description;
 pub mod extended_content_encryption;
+pub mod extended_stream_properties;
 pub mod file_properties;
 pub mod header_extension;
 pub mod marker;
@@ -27,6 +28,7 @@ use self::{
     error_correction::*,
     extended_content_description::*,
     extended_content_encryption::*,
+    extended_stream_properties::*,
     file_properties::*,
     header_extension::*,
     marker::*,
@@ -54,6 +56,7 @@ pub enum HeaderObject<'a> {
     ExtendedContentEncryption(ExtendedContentEncryptionData<'a>),
     DigitalSignature(DigitalSignatureData<'a>),
     Padding(usize),
+    ExtendedStreamProperties(ExtendedStreamPropertiesData<'a>),
     Unknown(Object<'a>)
 }
 
@@ -106,6 +109,9 @@ named!(pub header_object<HeaderObject>,
         ) |
         Object{guid: PADDING_OBJECT, data} => do_parse!(
             (HeaderObject::Padding(data.len()))
+        ) |
+        Object{guid: EXTENDED_STREAM_PROPERTIES_OBJECT, data} => do_parse!(
+            (HeaderObject::ExtendedStreamProperties(extended_stream_properties_data(data)?.1))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )
