@@ -12,6 +12,7 @@ use super::{
     stream_prioritization::*,
     metadata::{MetadataData, metadata_data},
     metadata_library::{MetadataLibraryData, metadata_library_data},
+    index_parameters::*,
 };
 
 #[derive(Debug, PartialEq)]
@@ -24,6 +25,7 @@ pub enum ExtensionHeaderObject<'a> {
     LanguageList(LanguageListData),
     Metadata(MetadataData<'a>),
     MetadataLibrary(MetadataLibraryData<'a>),
+    IndexParameters(IndexParametersData),
     Unknown(Object<'a>)
 }
 
@@ -52,6 +54,9 @@ named!(pub extension_header_object<ExtensionHeaderObject>,
         ) |
         Object{guid: METADATA_LIBRARY_OBJECT, data} => do_parse!(
             (ExtensionHeaderObject::MetadataLibrary(metadata_library_data(data)?.1))
+        ) |
+        Object{guid: INDEX_PARAMETERS_OBJECT, data} => do_parse!(
+            (ExtensionHeaderObject::IndexParameters(index_parameters_data(data)?.1))
         ) |
         unknown => do_parse!((ExtensionHeaderObject::Unknown(unknown)))
     )

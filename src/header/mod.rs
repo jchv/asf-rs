@@ -13,6 +13,7 @@ pub mod extended_stream_properties;
 pub mod file_properties;
 pub mod group_mutual_exclusion;
 pub mod header_extension;
+pub mod index_parameters;
 pub mod language_list;
 pub mod marker;
 pub mod metadata;
