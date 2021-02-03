@@ -1,3 +1,4 @@
+pub mod advanced_mutual_exclusion;
 pub mod bitrate_mutual_exclusion;
 pub mod codec_list;
 pub mod content_branding;
@@ -19,6 +20,7 @@ use nom::number::streaming::{le_u32, le_u64, le_u8};
 use crate::{guid::*, object::*};
 
 use self::{
+    advanced_mutual_exclusion::*,
     bitrate_mutual_exclusion::*,
     codec_list::*,
     content_description::*,
@@ -57,6 +59,7 @@ pub enum HeaderObject<'a> {
     DigitalSignature(DigitalSignatureData<'a>),
     Padding(usize),
     ExtendedStreamProperties(ExtendedStreamPropertiesData<'a>),
+    AdvancedMutualExclusion(AdvancedMutualExclusionData),
     Unknown(Object<'a>)
 }
 
@@ -112,6 +115,9 @@ named!(pub header_object<HeaderObject>,
         ) |
         Object{guid: EXTENDED_STREAM_PROPERTIES_OBJECT, data} => do_parse!(
             (HeaderObject::ExtendedStreamProperties(extended_stream_properties_data(data)?.1))
+        ) |
+        Object{guid: ADVANCED_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
+            (HeaderObject::AdvancedMutualExclusion(advanced_mutual_exclusion_data(data)?.1))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )
