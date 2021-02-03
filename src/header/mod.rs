@@ -13,6 +13,7 @@ pub mod extended_stream_properties;
 pub mod file_properties;
 pub mod group_mutual_exclusion;
 pub mod header_extension;
+pub mod language_list;
 pub mod marker;
 pub mod script_command;
 pub mod stream_bitrate_properties;
@@ -38,6 +39,7 @@ use self::{
     file_properties::*,
     group_mutual_exclusion::*,
     header_extension::*,
+    language_list::*,
     marker::*,
     script_command::*,
     stream_bitrate_properties::*,
@@ -69,6 +71,7 @@ pub enum HeaderObject<'a> {
     GroupMutualExclusion(GroupMutualExclusionData),
     StreamPrioritization(StreamPrioritizationData),
     BandwidthSharing(BandwidthSharingData),
+    LanguageList(LanguageListData),
     Unknown(Object<'a>)
 }
 
@@ -136,6 +139,9 @@ named!(pub header_object<HeaderObject>,
         ) |
         Object{guid: BANDWIDTH_SHARING_OBJECT, data} => do_parse!(
             (HeaderObject::BandwidthSharing(bandwidth_sharing_data(data)?.1))
+        ) |
+        Object{guid: LANGUAGE_LIST_OBJECT, data} => do_parse!(
+            (HeaderObject::LanguageList(language_list_data(data)?.1))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )
