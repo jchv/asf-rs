@@ -1,4 +1,5 @@
 pub mod advanced_mutual_exclusion;
+pub mod bandwidth_sharing;
 pub mod bitrate_mutual_exclusion;
 pub mod codec_list;
 pub mod content_branding;
@@ -23,6 +24,7 @@ use crate::{guid::*, object::*};
 
 use self::{
     advanced_mutual_exclusion::*,
+    bandwidth_sharing::*,
     bitrate_mutual_exclusion::*,
     codec_list::*,
     content_description::*,
@@ -66,6 +68,7 @@ pub enum HeaderObject<'a> {
     AdvancedMutualExclusion(AdvancedMutualExclusionData),
     GroupMutualExclusion(GroupMutualExclusionData),
     StreamPrioritization(StreamPrioritizationData),
+    BandwidthSharing(BandwidthSharingData),
     Unknown(Object<'a>)
 }
 
@@ -130,6 +133,9 @@ named!(pub header_object<HeaderObject>,
         ) |
         Object{guid: STREAM_PRIORITIZATION_OBJECT, data} => do_parse!(
             (HeaderObject::StreamPrioritization(stream_prioritization_data(data)?.1))
+        ) |
+        Object{guid: BANDWIDTH_SHARING_OBJECT, data} => do_parse!(
+            (HeaderObject::BandwidthSharing(bandwidth_sharing_data(data)?.1))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )
