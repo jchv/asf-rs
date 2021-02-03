@@ -15,6 +15,7 @@ pub mod header_extension;
 pub mod marker;
 pub mod script_command;
 pub mod stream_bitrate_properties;
+pub mod stream_prioritization;
 pub mod stream_properties;
 use nom::number::streaming::{le_u32, le_u64, le_u8};
 
@@ -38,6 +39,7 @@ use self::{
     marker::*,
     script_command::*,
     stream_bitrate_properties::*,
+    stream_prioritization::*,
     stream_properties::*
 };
 
@@ -63,6 +65,7 @@ pub enum HeaderObject<'a> {
     ExtendedStreamProperties(ExtendedStreamPropertiesData<'a>),
     AdvancedMutualExclusion(AdvancedMutualExclusionData),
     GroupMutualExclusion(GroupMutualExclusionData),
+    StreamPrioritization(StreamPrioritizationData),
     Unknown(Object<'a>)
 }
 
@@ -124,6 +127,9 @@ named!(pub header_object<HeaderObject>,
         ) |
         Object{guid: GROUP_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
             (HeaderObject::GroupMutualExclusion(group_mutual_exclusion_data(data)?.1))
+        ) |
+        Object{guid: STREAM_PRIORITIZATION_OBJECT, data} => do_parse!(
+            (HeaderObject::StreamPrioritization(stream_prioritization_data(data)?.1))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )
