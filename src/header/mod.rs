@@ -10,6 +10,7 @@ pub mod extended_content_description;
 pub mod extended_content_encryption;
 pub mod extended_stream_properties;
 pub mod file_properties;
+pub mod group_mutual_exclusion;
 pub mod header_extension;
 pub mod marker;
 pub mod script_command;
@@ -32,6 +33,7 @@ use self::{
     extended_content_encryption::*,
     extended_stream_properties::*,
     file_properties::*,
+    group_mutual_exclusion::*,
     header_extension::*,
     marker::*,
     script_command::*,
@@ -60,6 +62,7 @@ pub enum HeaderObject<'a> {
     Padding(usize),
     ExtendedStreamProperties(ExtendedStreamPropertiesData<'a>),
     AdvancedMutualExclusion(AdvancedMutualExclusionData),
+    GroupMutualExclusion(GroupMutualExclusionData),
     Unknown(Object<'a>)
 }
 
@@ -118,6 +121,9 @@ named!(pub header_object<HeaderObject>,
         ) |
         Object{guid: ADVANCED_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
             (HeaderObject::AdvancedMutualExclusion(advanced_mutual_exclusion_data(data)?.1))
+        ) |
+        Object{guid: GROUP_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
+            (HeaderObject::GroupMutualExclusion(group_mutual_exclusion_data(data)?.1))
         ) |
         unknown => do_parse!((HeaderObject::Unknown(unknown)))
     )
