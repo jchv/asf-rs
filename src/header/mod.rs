@@ -23,6 +23,7 @@ pub mod script_command;
 pub mod stream_bitrate_properties;
 pub mod stream_prioritization;
 pub mod stream_properties;
+pub mod timecode_index_parameters;
 use nom::number::streaming::{le_u32, le_u64, le_u8};
 
 use crate::{guid::*, object::*};

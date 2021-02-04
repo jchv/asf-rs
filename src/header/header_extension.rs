@@ -14,6 +14,7 @@ use super::{
     metadata_library::{MetadataLibraryData, metadata_library_data},
     index_parameters::*,
     media_object_index_parameters::*,
+    timecode_index_parameters::*,
 };
 
 #[derive(Debug, PartialEq)]
@@ -28,6 +29,7 @@ pub enum ExtensionHeaderObject<'a> {
     MetadataLibrary(MetadataLibraryData<'a>),
     IndexParameters(IndexParametersData),
     MediaObjectIndexParameters(MediaObjectIndexParametersData),
+    TimecodeIndexParameters(TimecodeIndexParametersData),
     Unknown(Object<'a>)
 }
 
@@ -62,6 +64,9 @@ named!(pub extension_header_object<ExtensionHeaderObject>,
         ) |
         Object{guid: MEDIA_OBJECT_INDEX_PARAMETERS_OBJECT, data} => do_parse!(
             (ExtensionHeaderObject::MediaObjectIndexParameters(media_object_index_parameters_data(data)?.1))
+        ) |
+        Object{guid: TIMECODE_INDEX_PARAMETERS_OBJECT, data} => do_parse!(
+            (ExtensionHeaderObject::TimecodeIndexParameters(timecode_index_parameters_data(data)?.1))
         ) |
         unknown => do_parse!((ExtensionHeaderObject::Unknown(unknown)))
     )
