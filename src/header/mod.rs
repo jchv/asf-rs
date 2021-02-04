@@ -30,24 +30,21 @@ use nom::number::streaming::{le_u32, le_u64, le_u8};
 
 use crate::{guid::*, object::*};
 
-use self::{
-    bitrate_mutual_exclusion::*,
-    codec_list::*,
-    content_description::*,
-    content_branding::*,
-    content_encryption::*,
-    digital_signature::*,
-    error_correction::*,
-    extended_content_description::*,
-    extended_content_encryption::*,
-    file_properties::*,
-    header_extension::*,
-    marker::*,
-    script_command::*,
-    stream_bitrate_properties::*,
-    stream_properties::*,
-};
-
+use self::bitrate_mutual_exclusion::BitrateMutualExclusionData;
+use self::codec_list::CodecListData;
+use self::content_branding::ContentBrandingData;
+use self::content_description::ContentDescriptionData;
+use self::content_encryption::ContentEncryptionData;
+use self::digital_signature::DigitalSignatureData;
+use self::error_correction::ErrorCorrectionData;
+use self::extended_content_description::ExtendedContentDescriptionData;
+use self::extended_content_encryption::ExtendedContentEncryptionData;
+use self::file_properties::FilePropertiesData;
+use self::header_extension::HeaderExtensionData;
+use self::marker::MarkerData;
+use self::script_command::ScriptCommandData;
+use self::stream_bitrate_properties::StreamBitratePropertiesData;
+use self::stream_properties::StreamPropertiesData;
 
 #[derive(Debug, PartialEq)]
 pub enum HeaderObject<'a> {

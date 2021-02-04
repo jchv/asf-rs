@@ -3,21 +3,19 @@ use nom::number::streaming::{le_u16, le_u32};
 
 use crate::{guid::*, object::*};
 
-use super::{
-    advanced_content_encryption::AdvancedContentEncryptionData,
-    advanced_mutual_exclusion::AdvancedMutualExclusionData,
-    bandwidth_sharing::BandwidthSharingData,
-    extended_stream_properties::ExtendedStreamPropertiesData,
-    group_mutual_exclusion::GroupMutualExclusionData,
-    language_list::LanguageListData,
-    stream_prioritization::StreamPrioritizationData,
-    metadata::MetadataData,
-    metadata_library::MetadataLibraryData,
-    index_parameters::IndexParametersData,
-    media_object_index_parameters::MediaObjectIndexParametersData,
-    timecode_index_parameters::TimecodeIndexParametersData,
-    compatibility::CompatibilityData,
-};
+use super::advanced_content_encryption::AdvancedContentEncryptionData;
+use super::advanced_mutual_exclusion::AdvancedMutualExclusionData;
+use super::bandwidth_sharing::BandwidthSharingData;
+use super::extended_stream_properties::ExtendedStreamPropertiesData;
+use super::group_mutual_exclusion::GroupMutualExclusionData;
+use super::language_list::LanguageListData;
+use super::stream_prioritization::StreamPrioritizationData;
+use super::metadata::MetadataData;
+use super::metadata_library::MetadataLibraryData;
+use super::index_parameters::IndexParametersData;
+use super::media_object_index_parameters::MediaObjectIndexParametersData;
+use super::timecode_index_parameters::TimecodeIndexParametersData;
+use super::compatibility::CompatibilityData;
 
 #[derive(Debug, PartialEq)]
 pub enum ExtensionHeaderObject<'a> {
