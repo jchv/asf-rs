@@ -6,14 +6,16 @@ use crate::guid::*;
 
 #[derive(Debug, PartialEq)]
 pub struct GroupMutualExclusionData {
-    exclusion_type: Uuid,
-    records: Vec<Vec<u16>>,
+    pub exclusion_type: Uuid,
+    pub records: Vec<Vec<u16>>,
 }
 
-named!(pub group_mutual_exclusion_data<GroupMutualExclusionData>,
-    do_parse!(
-        exclusion_type: guid >>
-        records: length_count!(le_u16, length_count!(le_u16, le_u16)) >>
-        (GroupMutualExclusionData{exclusion_type, records})
-    )
-);
+impl GroupMutualExclusionData {
+    named!(pub parse<Self>,
+        do_parse!(
+            exclusion_type: guid >>
+            records: length_count!(le_u16, length_count!(le_u16, le_u16)) >>
+            (Self{exclusion_type, records})
+        )
+    );
+}

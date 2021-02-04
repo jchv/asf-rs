@@ -5,36 +5,38 @@ use crate::widestr::*;
 
 #[derive(Debug, PartialEq)]
 pub struct ContentDescriptionData {
-    title: WideStr,
-    author: WideStr,
-    copyright: WideStr,
-    description: WideStr,
-    rating: WideStr,
+    pub title: WideStr,
+    pub author: WideStr,
+    pub copyright: WideStr,
+    pub description: WideStr,
+    pub rating: WideStr,
 }
 
-named!(pub content_description_data<ContentDescriptionData>,
-    do_parse!(
-        title_len: le_u16 >>
-        author_len: le_u16 >>
-        copyright_len: le_u16 >>
-        description_len: le_u16 >>
-        rating_len: le_u16 >>
+impl ContentDescriptionData {
+    named!(pub parse<Self>,
+        do_parse!(
+            title_len: le_u16 >>
+            author_len: le_u16 >>
+            copyright_len: le_u16 >>
+            description_len: le_u16 >>
+            rating_len: le_u16 >>
 
-        title: take!(title_len) >>
-        author: take!(author_len) >>
-        copyright: take!(copyright_len) >>
-        description: take!(description_len) >>
-        rating: take!(rating_len) >>
+            title: take!(title_len) >>
+            author: take!(author_len) >>
+            copyright: take!(copyright_len) >>
+            description: take!(description_len) >>
+            rating: take!(rating_len) >>
 
-        (ContentDescriptionData{
-            title: wchar_str(title)?.1,
-            author: wchar_str(author)?.1,
-            copyright: wchar_str(copyright)?.1,
-            description: wchar_str(description)?.1,
-            rating: wchar_str(rating)?.1,
-        })
-    )
-);
+            (Self{
+                title: wchar_str(title)?.1,
+                author: wchar_str(author)?.1,
+                copyright: wchar_str(copyright)?.1,
+                description: wchar_str(description)?.1,
+                rating: wchar_str(rating)?.1,
+            })
+        )
+    );
+}
 
 #[cfg(test)]
 mod tests {
@@ -45,7 +47,7 @@ mod tests {
 
     #[test]
     fn broken_content_descriptor() {
-        let err = header_object(&[
+        let err = HeaderObject::parse(&[
             0x33, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11, 0xA6, 0xD9,
             0x00, 0xAA, 0x00, 0x62, 0xCE, 0x6C, 0x67, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x2E, 0x00, 0x11, 0x00, 0x02, 0x00,
@@ -67,7 +69,7 @@ mod tests {
     #[test]
     fn basic_content_descriptor() {
         assert_eq!(
-            header_object(&[
+            HeaderObject::parse(&[
                 0x33, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11, 0xA6, 0xD9,
                 0x00, 0xAA, 0x00, 0x62, 0xCE, 0x6C, 0x68, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0x00, 0x00, 0x2E, 0x00, 0x12, 0x00, 0x02, 0x00,

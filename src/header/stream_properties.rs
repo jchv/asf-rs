@@ -6,38 +6,40 @@ use crate::guid::*;
 
 #[derive(Debug, PartialEq)]
 pub struct StreamPropertiesData<'a> {
-    stream_type: Uuid,
-    error_correction_type: Uuid,
-    time_offset: u64,
-    flags: u16,
-    reserved: u32,
-    type_specific_data: &'a [u8],
-    error_correction_data: &'a [u8],
+    pub stream_type: Uuid,
+    pub error_correction_type: Uuid,
+    pub time_offset: u64,
+    pub flags: u16,
+    pub reserved: u32,
+    pub type_specific_data: &'a [u8],
+    pub error_correction_data: &'a [u8],
 }
 
-named!(pub stream_properties_data<StreamPropertiesData>,
-    do_parse!(
-        stream_type: guid >>
-        error_correction_type: guid >>
-        time_offset: le_u64 >>
-        type_specific_data_len: le_u32 >>
-        error_correction_data_len: le_u32 >>
-        flags: le_u16 >>
-        reserved: le_u32 >>
-        type_specific_data: take!(type_specific_data_len) >>
-        error_correction_data: take!(error_correction_data_len) >>
+impl<'a> StreamPropertiesData<'a> {
+    named!(pub parse<StreamPropertiesData>,
+        do_parse!(
+            stream_type: guid >>
+            error_correction_type: guid >>
+            time_offset: le_u64 >>
+            type_specific_data_len: le_u32 >>
+            error_correction_data_len: le_u32 >>
+            flags: le_u16 >>
+            reserved: le_u32 >>
+            type_specific_data: take!(type_specific_data_len) >>
+            error_correction_data: take!(error_correction_data_len) >>
 
-        (StreamPropertiesData{
-            stream_type,
-            error_correction_type,
-            time_offset,
-            flags,
-            reserved,
-            type_specific_data,
-            error_correction_data,
-        })
-    )
-);
+            (StreamPropertiesData{
+                stream_type,
+                error_correction_type,
+                time_offset,
+                flags,
+                reserved,
+                type_specific_data,
+                error_correction_data,
+            })
+        )
+    );
+}
 
 #[cfg(test)]
 mod tests {
@@ -48,7 +50,7 @@ mod tests {
     #[test]
     fn basic_stream_properties() {
         assert_eq!(
-            header_object(&[
+            HeaderObject::parse(&[
                 0x91, 0x07, 0xDC, 0xB7, 0xB7, 0xA9, 0xCF, 0x11, 0x8E, 0xE6,
                 0x00, 0xC0, 0x0C, 0x20, 0x53, 0x65, 0x72, 0x00, 0x00, 0x00, 
                 0x00, 0x00, 0x00, 0x00, 0x40, 0x9E, 0x69, 0xF8, 0x4D, 0x5B, 

@@ -11,15 +11,15 @@ pub struct ObjectHeader {
     pub size: u64,
 }
 
-named!(pub object_header<ObjectHeader>,
-    do_parse!(guid: guid >> size: le_u64 >> (ObjectHeader{guid, size}))
-);
-
 #[derive(Debug, PartialEq)]
 pub struct Object<'a> {
     pub guid: Uuid,
     pub data: &'a [u8],
 }
+
+named!(pub object_header<ObjectHeader>,
+    do_parse!(guid: guid >> size: le_u64 >> (ObjectHeader{guid, size}))
+);
 
 named!(pub object<Object>,
     do_parse!(

@@ -3,30 +3,32 @@ use nom::number::streaming::le_u32;
 
 #[derive(Debug, PartialEq)]
 pub struct ContentEncryptionData<'a> {
-    secret_data: &'a [u8],
-    protection_type: &'a [u8],
-    key_id: &'a [u8],
-    license_url: &'a [u8],
+    pub secret_data: &'a [u8],
+    pub protection_type: &'a [u8],
+    pub key_id: &'a [u8],
+    pub license_url: &'a [u8],
 }
 
-named!(pub content_encryption_data<ContentEncryptionData>,
-    do_parse!(
-        secret_data_length: le_u32 >>
-        secret_data: take!(secret_data_length) >>
-        protection_type_length: le_u32 >>
-        protection_type: take!(protection_type_length) >>
-        key_id_length: le_u32 >>
-        key_id: take!(key_id_length) >>
-        license_url_length: le_u32 >>
-        license_url: take!(license_url_length) >>
-        (ContentEncryptionData{
-            secret_data,
-            protection_type,
-            key_id,
-            license_url,
-        })
-    )
-);
+impl<'a> ContentEncryptionData<'a> {
+    named!(pub parse<ContentEncryptionData>,
+        do_parse!(
+            secret_data_length: le_u32 >>
+            secret_data: take!(secret_data_length) >>
+            protection_type_length: le_u32 >>
+            protection_type: take!(protection_type_length) >>
+            key_id_length: le_u32 >>
+            key_id: take!(key_id_length) >>
+            license_url_length: le_u32 >>
+            license_url: take!(license_url_length) >>
+            (ContentEncryptionData{
+                secret_data,
+                protection_type,
+                key_id,
+                license_url,
+            })
+        )
+    );
+}
 
 #[cfg(test)]
 mod tests {
@@ -37,7 +39,7 @@ mod tests {
     #[test]
     fn basic_content_encryption() {
         assert_eq!(
-            header_object(&[
+            HeaderObject::parse(&[
                 0xFB, 0xB3, 0x11, 0x22, 0x23, 0xBD, 0xD2, 0x11, 0xB4, 0xB7, 0x00, 0xA0,
                 0xC9, 0x55, 0xFC, 0x6E, 0xBC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x18, 0x00, 0x00, 0x00, 0xB8, 0xE8, 0x9C, 0xBB, 0x79, 0x31, 0x80, 0x5C,

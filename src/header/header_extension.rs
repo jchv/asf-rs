@@ -4,19 +4,19 @@ use nom::number::streaming::{le_u16, le_u32};
 use crate::{guid::*, object::*};
 
 use super::{
-    advanced_content_encryption::*,
-    advanced_mutual_exclusion::*,
-    bandwidth_sharing::*,
-    extended_stream_properties::*,
-    group_mutual_exclusion::*,
-    language_list::*,
-    stream_prioritization::*,
-    metadata::{MetadataData, metadata_data},
-    metadata_library::{MetadataLibraryData, metadata_library_data},
-    index_parameters::*,
-    media_object_index_parameters::*,
-    timecode_index_parameters::*,
-    compatibility::*,
+    advanced_content_encryption::AdvancedContentEncryptionData,
+    advanced_mutual_exclusion::AdvancedMutualExclusionData,
+    bandwidth_sharing::BandwidthSharingData,
+    extended_stream_properties::ExtendedStreamPropertiesData,
+    group_mutual_exclusion::GroupMutualExclusionData,
+    language_list::LanguageListData,
+    stream_prioritization::StreamPrioritizationData,
+    metadata::MetadataData,
+    metadata_library::MetadataLibraryData,
+    index_parameters::IndexParametersData,
+    media_object_index_parameters::MediaObjectIndexParametersData,
+    timecode_index_parameters::TimecodeIndexParametersData,
+    compatibility::CompatibilityData,
 };
 
 #[derive(Debug, PartialEq)]
@@ -37,52 +37,54 @@ pub enum ExtensionHeaderObject<'a> {
     Unknown(Object<'a>)
 }
 
-named!(pub extension_header_object<ExtensionHeaderObject>,
-    switch!(object,
-        Object{guid: EXTENDED_STREAM_PROPERTIES_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::ExtendedStreamProperties(extended_stream_properties_data(data)?.1))
-        ) |
-        Object{guid: ADVANCED_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::AdvancedMutualExclusion(advanced_mutual_exclusion_data(data)?.1))
-        ) |
-        Object{guid: GROUP_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::GroupMutualExclusion(group_mutual_exclusion_data(data)?.1))
-        ) |
-        Object{guid: STREAM_PRIORITIZATION_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::StreamPrioritization(stream_prioritization_data(data)?.1))
-        ) |
-        Object{guid: BANDWIDTH_SHARING_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::BandwidthSharing(bandwidth_sharing_data(data)?.1))
-        ) |
-        Object{guid: LANGUAGE_LIST_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::LanguageList(language_list_data(data)?.1))
-        ) |
-        Object{guid: METADATA_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::Metadata(metadata_data(data)?.1))
-        ) |
-        Object{guid: METADATA_LIBRARY_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::MetadataLibrary(metadata_library_data(data)?.1))
-        ) |
-        Object{guid: INDEX_PARAMETERS_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::IndexParameters(index_parameters_data(data)?.1))
-        ) |
-        Object{guid: MEDIA_OBJECT_INDEX_PARAMETERS_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::MediaObjectIndexParameters(media_object_index_parameters_data(data)?.1))
-        ) |
-        Object{guid: TIMECODE_INDEX_PARAMETERS_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::TimecodeIndexParameters(timecode_index_parameters_data(data)?.1))
-        ) |
-        Object{guid: COMPATIBILITY_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::Compatibility(compatibility_data(data)?.1))
-        ) |
-        Object{guid: ADVANCED_CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
-            (ExtensionHeaderObject::AdvancedContentEncryption(advanced_content_encryption_data(data)?.1))
-        ) |
-        unknown => do_parse!((ExtensionHeaderObject::Unknown(unknown)))
-    )
-);
+impl<'a> ExtensionHeaderObject<'a> {
+    named!(pub parse<ExtensionHeaderObject>,
+        switch!(object,
+            Object{guid: EXTENDED_STREAM_PROPERTIES_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::ExtendedStreamProperties(ExtendedStreamPropertiesData::parse(data)?.1))
+            ) |
+            Object{guid: ADVANCED_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::AdvancedMutualExclusion(AdvancedMutualExclusionData::parse(data)?.1))
+            ) |
+            Object{guid: GROUP_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::GroupMutualExclusion(GroupMutualExclusionData::parse(data)?.1))
+            ) |
+            Object{guid: STREAM_PRIORITIZATION_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::StreamPrioritization(StreamPrioritizationData::parse(data)?.1))
+            ) |
+            Object{guid: BANDWIDTH_SHARING_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::BandwidthSharing(BandwidthSharingData::parse(data)?.1))
+            ) |
+            Object{guid: LANGUAGE_LIST_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::LanguageList(LanguageListData::parse(data)?.1))
+            ) |
+            Object{guid: METADATA_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::Metadata(MetadataData::parse(data)?.1))
+            ) |
+            Object{guid: METADATA_LIBRARY_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::MetadataLibrary(MetadataLibraryData::parse(data)?.1))
+            ) |
+            Object{guid: INDEX_PARAMETERS_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::IndexParameters(IndexParametersData::parse(data)?.1))
+            ) |
+            Object{guid: MEDIA_OBJECT_INDEX_PARAMETERS_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::MediaObjectIndexParameters(MediaObjectIndexParametersData::parse(data)?.1))
+            ) |
+            Object{guid: TIMECODE_INDEX_PARAMETERS_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::TimecodeIndexParameters(TimecodeIndexParametersData::parse(data)?.1))
+            ) |
+            Object{guid: COMPATIBILITY_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::Compatibility(CompatibilityData::parse(data)?.1))
+            ) |
+            Object{guid: ADVANCED_CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
+                (ExtensionHeaderObject::AdvancedContentEncryption(AdvancedContentEncryptionData::parse(data)?.1))
+            ) |
+            unknown => do_parse!((ExtensionHeaderObject::Unknown(unknown)))
+        )
+    );
 
-named!(extension_header_object_vec<Vec<ExtensionHeaderObject>>, many0!(complete!(extension_header_object)));
+    named!(parse_many<Vec<ExtensionHeaderObject>>, many0!(complete!(Self::parse)));
+}
 
 #[derive(Debug, PartialEq)]
 pub struct HeaderExtensionData<'a> {
@@ -91,16 +93,18 @@ pub struct HeaderExtensionData<'a> {
     extension_objects: Vec<ExtensionHeaderObject<'a>>,
 }
 
-named!(pub header_extension_data<HeaderExtensionData>,
-    do_parse!(
-        reserved_1: guid >>
-        reserved_2: le_u16 >>
-        extension_data_size: le_u32 >>
-        extension_data: take!(extension_data_size) >>
-        (HeaderExtensionData{
-            reserved_1,
-            reserved_2,
-            extension_objects: extension_header_object_vec(extension_data)?.1,
-        })
-    )
-);
+impl<'a> HeaderExtensionData<'a> {
+    named!(pub parse<HeaderExtensionData>,
+        do_parse!(
+            reserved_1: guid >>
+            reserved_2: le_u16 >>
+            extension_data_size: le_u32 >>
+            extension_data: take!(extension_data_size) >>
+            (HeaderExtensionData{
+                reserved_1,
+                reserved_2,
+                extension_objects: ExtensionHeaderObject::parse_many(extension_data)?.1,
+            })
+        )
+    );
+}

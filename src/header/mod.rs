@@ -70,75 +70,79 @@ pub enum HeaderObject<'a> {
     Unknown(Object<'a>)
 }
 
-named!(pub header_object<HeaderObject>,
-    switch!(object,
-        Object{guid: FILE_PROPERTIES_OBJECT, data} => do_parse!(
-            (HeaderObject::FileProperties(file_properties_data(data)?.1))
-        ) |
-        Object{guid: STREAM_PROPERTIES_OBJECT, data} => do_parse!(
-            (HeaderObject::StreamProperties(stream_properties_data(data)?.1))
-        ) |
-        Object{guid: HEADER_EXTENSION_OBJECT, data} => do_parse!(
-            (HeaderObject::HeaderExtension(header_extension_data(data)?.1))
-        ) |
-        Object{guid: CODEC_LIST_OBJECT, data} => do_parse!(
-            (HeaderObject::CodecList(codec_list_data(data)?.1))
-        ) |
-        Object{guid: SCRIPT_COMMAND_OBJECT, data} => do_parse!(
-            (HeaderObject::ScriptCommand(script_command_data(data)?.1))
-        ) |
-        Object{guid: MARKER_OBJECT, data} => do_parse!(
-            (HeaderObject::Marker(marker_data(data)?.1))
-        ) |
-        Object{guid: BITRATE_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
-            (HeaderObject::BitrateMutualExclusion(bitrate_mutual_exclusion_data(data)?.1))
-        ) |
-        Object{guid: ERROR_CORRECTION_OBJECT, data} => do_parse!(
-            (HeaderObject::ErrorCorrection(error_correction_data(data)?.1))
-        ) |
-        Object{guid: CONTENT_DESCRIPTION_OBJECT, data} => do_parse!(
-            (HeaderObject::ContentDescription(content_description_data(data)?.1))
-        ) |
-        Object{guid: EXTENDED_CONTENT_DESCRIPTION_OBJECT, data} => do_parse!(
-            (HeaderObject::ExtendedContentDescription(extended_content_description_data(data)?.1))
-        ) |
-        Object{guid: STREAM_BITRATE_PROPERTIES_OBJECT, data} => do_parse!(
-            (HeaderObject::StreamBitrateProperties(stream_bitrate_properties_data(data)?.1))
-        ) |
-        Object{guid: CONTENT_BRANDING_OBJECT, data} => do_parse!(
-            (HeaderObject::ContentBranding(content_branding_data(data)?.1))
-        ) |
-        Object{guid: CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
-            (HeaderObject::ContentEncryption(content_encryption_data(data)?.1))
-        ) |
-        Object{guid: EXTENDED_CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
-            (HeaderObject::ExtendedContentEncryption(extended_content_encryption_data(data)?.1))
-        ) |
-        Object{guid: DIGITAL_SIGNATURE_OBJECT, data} => do_parse!(
-            (HeaderObject::DigitalSignature(digital_signature_data(data)?.1))
-        ) |
-        Object{guid: PADDING_OBJECT, data} => do_parse!(
-            (HeaderObject::Padding(data.len()))
-        ) |
-        unknown => do_parse!((HeaderObject::Unknown(unknown)))
-    )
-);
+impl<'a> HeaderObject<'a> {
+    named!(pub parse<HeaderObject>,
+        switch!(object,
+            Object{guid: FILE_PROPERTIES_OBJECT, data} => do_parse!(
+                (HeaderObject::FileProperties(FilePropertiesData::parse(data)?.1))
+            ) |
+            Object{guid: STREAM_PROPERTIES_OBJECT, data} => do_parse!(
+                (HeaderObject::StreamProperties(StreamPropertiesData::parse(data)?.1))
+            ) |
+            Object{guid: HEADER_EXTENSION_OBJECT, data} => do_parse!(
+                (HeaderObject::HeaderExtension(HeaderExtensionData::parse(data)?.1))
+            ) |
+            Object{guid: CODEC_LIST_OBJECT, data} => do_parse!(
+                (HeaderObject::CodecList(CodecListData::parse(data)?.1))
+            ) |
+            Object{guid: SCRIPT_COMMAND_OBJECT, data} => do_parse!(
+                (HeaderObject::ScriptCommand(ScriptCommandData::parse(data)?.1))
+            ) |
+            Object{guid: MARKER_OBJECT, data} => do_parse!(
+                (HeaderObject::Marker(MarkerData::parse(data)?.1))
+            ) |
+            Object{guid: BITRATE_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
+                (HeaderObject::BitrateMutualExclusion(BitrateMutualExclusionData::parse(data)?.1))
+            ) |
+            Object{guid: ERROR_CORRECTION_OBJECT, data} => do_parse!(
+                (HeaderObject::ErrorCorrection(ErrorCorrectionData::parse(data)?.1))
+            ) |
+            Object{guid: CONTENT_DESCRIPTION_OBJECT, data} => do_parse!(
+                (HeaderObject::ContentDescription(ContentDescriptionData::parse(data)?.1))
+            ) |
+            Object{guid: EXTENDED_CONTENT_DESCRIPTION_OBJECT, data} => do_parse!(
+                (HeaderObject::ExtendedContentDescription(ExtendedContentDescriptionData::parse(data)?.1))
+            ) |
+            Object{guid: STREAM_BITRATE_PROPERTIES_OBJECT, data} => do_parse!(
+                (HeaderObject::StreamBitrateProperties(StreamBitratePropertiesData::parse(data)?.1))
+            ) |
+            Object{guid: CONTENT_BRANDING_OBJECT, data} => do_parse!(
+                (HeaderObject::ContentBranding(ContentBrandingData::parse(data)?.1))
+            ) |
+            Object{guid: CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
+                (HeaderObject::ContentEncryption(ContentEncryptionData::parse(data)?.1))
+            ) |
+            Object{guid: EXTENDED_CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
+                (HeaderObject::ExtendedContentEncryption(ExtendedContentEncryptionData::parse(data)?.1))
+            ) |
+            Object{guid: DIGITAL_SIGNATURE_OBJECT, data} => do_parse!(
+                (HeaderObject::DigitalSignature(DigitalSignatureData::parse(data)?.1))
+            ) |
+            Object{guid: PADDING_OBJECT, data} => do_parse!(
+                (HeaderObject::Padding(data.len()))
+            ) |
+            unknown => do_parse!((HeaderObject::Unknown(unknown)))
+        )
+    );
 
-named!(header_object_vec<Vec<HeaderObject>>, many0!(complete!(header_object)));
+    named!(parse_many<Vec<HeaderObject>>, many0!(complete!(Self::parse)));
+}
 
 #[derive(Debug, PartialEq)]
 pub struct HeaderObjects<'a> {
     pub objects: Vec<HeaderObject<'a>>
 }
 
-named!(pub header_objects<HeaderObjects>,
-    do_parse!(
-        guid: tag!(HEADER_OBJECT.as_bytes_ms()) >>
-        size: le_u64 >>
-        num_header_objs: le_u32 >>
-        reserved1: le_u8 >>
-        reserved2: le_u8 >>
-        data: take!(size - 30) >>
-        (HeaderObjects{objects: header_object_vec(data)?.1})
-    )
-);
+impl<'a> HeaderObjects<'a> {
+    named!(pub parse<HeaderObjects>,
+        do_parse!(
+            guid: tag!(HEADER_OBJECT.as_bytes_ms()) >>
+            size: le_u64 >>
+            num_header_objs: le_u32 >>
+            reserved1: le_u8 >>
+            reserved2: le_u8 >>
+            data: take!(size - 30) >>
+            (HeaderObjects{objects: HeaderObject::parse_many(data)?.1})
+        )
+    );
+}
