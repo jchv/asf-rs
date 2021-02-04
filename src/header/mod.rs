@@ -2,6 +2,7 @@ pub mod advanced_mutual_exclusion;
 pub mod bandwidth_sharing;
 pub mod bitrate_mutual_exclusion;
 pub mod codec_list;
+pub mod compatibility;
 pub mod content_branding;
 pub mod content_description;
 pub mod content_encryption;
@@ -43,7 +44,7 @@ use self::{
     marker::*,
     script_command::*,
     stream_bitrate_properties::*,
-    stream_properties::*
+    stream_properties::*,
 };
 
 
