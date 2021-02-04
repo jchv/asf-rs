@@ -1,3 +1,4 @@
+pub mod advanced_content_encryption;
 pub mod advanced_mutual_exclusion;
 pub mod bandwidth_sharing;
 pub mod bitrate_mutual_exclusion;

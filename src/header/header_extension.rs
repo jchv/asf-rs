@@ -4,6 +4,7 @@ use nom::number::streaming::{le_u16, le_u32};
 use crate::{guid::*, object::*};
 
 use super::{
+    advanced_content_encryption::*,
     advanced_mutual_exclusion::*,
     bandwidth_sharing::*,
     extended_stream_properties::*,
@@ -32,6 +33,7 @@ pub enum ExtensionHeaderObject<'a> {
     MediaObjectIndexParameters(MediaObjectIndexParametersData),
     TimecodeIndexParameters(TimecodeIndexParametersData),
     Compatibility(CompatibilityData),
+    AdvancedContentEncryption(AdvancedContentEncryptionData<'a>),
     Unknown(Object<'a>)
 }
 
@@ -72,6 +74,9 @@ named!(pub extension_header_object<ExtensionHeaderObject>,
         ) |
         Object{guid: COMPATIBILITY_OBJECT, data} => do_parse!(
             (ExtensionHeaderObject::Compatibility(compatibility_data(data)?.1))
+        ) |
+        Object{guid: ADVANCED_CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
+            (ExtensionHeaderObject::AdvancedContentEncryption(advanced_content_encryption_data(data)?.1))
         ) |
         unknown => do_parse!((ExtensionHeaderObject::Unknown(unknown)))
     )

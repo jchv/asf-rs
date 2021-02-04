@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use nom::number::streaming::{le_u16};
+use nom::number::streaming::le_u16;
 
 use crate::guid::*;
 
