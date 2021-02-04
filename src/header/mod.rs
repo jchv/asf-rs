@@ -16,6 +16,7 @@ pub mod header_extension;
 pub mod index_parameters;
 pub mod language_list;
 pub mod marker;
+pub mod media_object_index_parameters;
 pub mod metadata;
 pub mod metadata_library;
 pub mod script_command;
