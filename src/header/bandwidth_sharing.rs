@@ -1,3 +1,5 @@
+use std::{convert::TryInto, io::Write};
+
 use nom::number::streaming::{le_u16, le_u32};
 use uuid::Uuid;
 
@@ -27,4 +29,16 @@ impl BandwidthSharingData {
             })
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let stream_numbers_len: u16 = self.stream_numbers.len().try_into()?;
+        w.write_all(&self.sharing_type.as_bytes_ms())?;
+        w.write_all(&self.data_bitrate.to_le_bytes())?;
+        w.write_all(&self.buffer_size.to_le_bytes())?;
+        w.write_all(&stream_numbers_len.to_le_bytes())?;
+        for stream_number in self.stream_numbers.iter() {
+            w.write_all(&stream_number.to_le_bytes())?;
+        }
+        Ok(())
+    }
 }

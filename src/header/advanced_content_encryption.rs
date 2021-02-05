@@ -1,3 +1,5 @@
+use std::{convert::TryInto, io::Write};
+
 use uuid::Uuid;
 use nom::number::streaming::{le_u16, le_u32};
 
@@ -35,6 +37,14 @@ impl<'a> EncryptedObjectRecord<'a> {
             })
         )
     );
+
+    fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let data_size: u32 = self.data.len().try_into()?;
+        w.write_all(&self.object_type.to_le_bytes())?;
+        w.write_all(&data_size.to_le_bytes())?;
+        w.write_all(self.data)?;
+        Ok(())
+    }
 }
 
 impl<'a> ContentEncryptionRecord<'a> {
@@ -53,6 +63,20 @@ impl<'a> ContentEncryptionRecord<'a> {
             })
         )
     );
+
+    fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let encrypted_object_records_len: u16 = self.encrypted_object_records.len().try_into()?;
+        let data_size: u32 = self.data.len().try_into()?;
+        w.write_all(&self.system_id.as_bytes_ms())?;
+        w.write_all(&self.system_version.to_le_bytes())?;
+        w.write_all(&encrypted_object_records_len.to_le_bytes())?;
+        for record in self.encrypted_object_records.iter() {
+            record.write(w)?;
+        }
+        w.write_all(&data_size.to_le_bytes())?;
+        w.write_all(self.data)?;
+        Ok(())
+    }
 }
 
 impl<'a> AdvancedContentEncryptionData<'a> {
@@ -64,4 +88,13 @@ impl<'a> AdvancedContentEncryptionData<'a> {
             })
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let content_encryption_records_len: u16 = self.content_encryption_records.len().try_into()?;
+        w.write_all(&content_encryption_records_len.to_le_bytes())?;
+        for record in self.content_encryption_records.iter() {
+            record.write(w)?
+        }
+        Ok(())
+    }
 }
