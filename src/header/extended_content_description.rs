@@ -18,7 +18,7 @@ pub struct ExtendedContentDescriptionData<'a> {
 impl<'a> ContentDescriptor<'a> {
     named!(pub parse<ContentDescriptor>,
         do_parse!(
-            name: len16_prefixed_widestr >>
+            name: call!(WideStr::parse_count16) >>
             value_type: le_u16 >>
             value_len: le_u16 >>
             value: take!(value_len) >>

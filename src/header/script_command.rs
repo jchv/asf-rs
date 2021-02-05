@@ -23,7 +23,7 @@ impl Command {
         do_parse!(
             presentation_time: le_u32 >>
             type_index: le_u16 >>
-            command_name: len16_prefixed_widestr >>
+            command_name: call!(WideStr::parse_count16) >>
             (Self{presentation_time, type_index, command_name})
         )
     );
@@ -35,7 +35,7 @@ impl ScriptCommandData {
             reserved: guid >>
             commands_count: le_u16 >>
             command_types_count: le_u16 >>
-            command_types: count!(len16_prefixed_widestr, command_types_count.into()) >>
+            command_types: count!(WideStr::parse_count16, command_types_count.into()) >>
             commands: count!(Command::parse, commands_count.into()) >>
             (Self{reserved, command_types, commands})
         )

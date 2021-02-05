@@ -28,11 +28,11 @@ impl ContentDescriptionData {
             rating: take!(rating_len) >>
 
             (Self{
-                title: wchar_str(title)?.1,
-                author: wchar_str(author)?.1,
-                copyright: wchar_str(copyright)?.1,
-                description: wchar_str(description)?.1,
-                rating: wchar_str(rating)?.1,
+                title: WideStr::parse(title)?.1,
+                author: WideStr::parse(author)?.1,
+                copyright: WideStr::parse(copyright)?.1,
+                description: WideStr::parse(description)?.1,
+                rating: WideStr::parse(rating)?.1,
             })
         )
     );

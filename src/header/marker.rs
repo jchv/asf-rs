@@ -29,7 +29,7 @@ impl Marker {
             entry_length: le_u16 >>
             send_time: le_u32 >>
             flags: le_u32 >>
-            marker_description: len32_prefixed_widestr >>
+            marker_description: call!(WideStr::parse_count32) >>
             (Self{offset, presentation_time, send_time, flags, marker_description})
         )
     );
@@ -41,7 +41,7 @@ impl MarkerData {
             reserved_1: guid >>
             markers_count: le_u32 >>
             reserved_2: le_u16 >>
-            name: len16_prefixed_widestr >>
+            name: call!(WideStr::parse_count16) >>
             markers: count!(Marker::parse, markers_count as _) >>
             (Self{reserved_1, reserved_2, name, markers})
         )

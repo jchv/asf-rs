@@ -22,8 +22,8 @@ impl<'a> CodecEntry<'a> {
     named!(pub parse<CodecEntry>,
         do_parse!(
             codec_type: le_u16 >>
-            codec_name: len16_prefixed_widestr >>
-            codec_description: len16_prefixed_widestr >>
+            codec_name: call!(WideStr::parse_count16) >>
+            codec_description: call!(WideStr::parse_count16) >>
             codec_information_len: le_u16 >>
             codec_information: take!(codec_information_len) >>
             (CodecEntry{codec_type, codec_name, codec_description, codec_information})

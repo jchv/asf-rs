@@ -13,7 +13,7 @@ impl LanguageListData {
         do_parse!(
             length: le_u8 >>
             data: take!(length) >>
-            (wchar_str(data)?.1)
+            (WideStr::parse(data)?.1)
         )
     );
 

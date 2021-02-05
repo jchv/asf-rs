@@ -46,7 +46,7 @@ impl StreamName {
             stream_name: take!(stream_name_length) >>
             (Self{
                 language_id_index,
-                stream_name: wchar_str(stream_name)?.1,
+                stream_name: WideStr::parse(stream_name)?.1,
             })
         )
     );

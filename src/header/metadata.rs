@@ -31,7 +31,7 @@ impl<'a> DescriptionRecord<'a> {
                 reserved,
                 stream_number,
                 data_type,
-                name: wchar_str(name)?.1,
+                name: WideStr::parse(name)?.1,
                 data,
             })
         )
