@@ -41,4 +41,8 @@ impl BandwidthSharingData {
         }
         Ok(())
     }
+
+    pub fn size_of(&self) -> usize {
+        16 + 4 + 4 + 2 + self.stream_numbers.len() * 2
+    }
 }

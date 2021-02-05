@@ -1,3 +1,5 @@
+use std::{convert::TryInto, io::Write};
+
 use nom::number::streaming::le_u32;
 
 
@@ -27,4 +29,22 @@ impl<'a> ContentBrandingData<'a> {
             })
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let banner_image_data_len: u16 = self.banner_image_data.len().try_into()?;
+        let banner_image_url_len: u16 = self.banner_image_url.len().try_into()?;
+        let copyright_url_len: u16 = self.copyright_url.len().try_into()?;
+        w.write_all(&self.banner_image_type.to_le_bytes())?;
+        w.write_all(&banner_image_data_len.to_le_bytes())?;
+        w.write_all(self.banner_image_data)?;
+        w.write_all(&banner_image_url_len.to_le_bytes())?;
+        w.write_all(self.banner_image_url)?;
+        w.write_all(&copyright_url_len.to_le_bytes())?;
+        w.write_all(self.copyright_url)?;
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        4 + 4 + self.banner_image_data.len() + 4 + self.banner_image_url.len() + 4 + self.copyright_url.len()
+    }
 }

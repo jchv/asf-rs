@@ -30,4 +30,8 @@ impl BitrateMutualExclusionData {
         }
         Ok(())
     }
+
+    pub fn size_of(&self) -> usize {
+        16 + 2 + self.stream_numbers.len() * 2
+    }
 }

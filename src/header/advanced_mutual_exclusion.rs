@@ -30,4 +30,8 @@ impl AdvancedMutualExclusionData {
         }
         Ok(())
     }
+
+    pub fn size_of(&self) -> usize {
+        16 + self.stream_numbers.len() * 2
+    }
 }

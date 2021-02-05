@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use nom::number::streaming::le_u8;
 
 
@@ -18,4 +20,14 @@ impl CompatibilityData {
             })
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        w.write_all(&self.profile.to_le_bytes())?;
+        w.write_all(&self.mode.to_le_bytes())?;
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        2 + 2
+    }
 }

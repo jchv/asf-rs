@@ -26,6 +26,10 @@ impl WideStr {
         Ok(())
     }
 
+    pub fn size_of(&self) -> usize {
+        self.0.len() * 2
+    }
+
     named!(pub parse_count16<WideStr>,
         map!(length_count!(le_u16, le_u16), |x| WideStr(x)));
 
@@ -38,6 +42,10 @@ impl WideStr {
         Ok(())
     }
 
+    pub fn size_of_count16(&self) -> usize {
+        2 + self.0.len() * 2
+    }
+
     named!(pub parse_count32<WideStr>,
         map!(length_count!(le_u32, le_u16), |x| WideStr(x)));
 
@@ -48,6 +56,10 @@ impl WideStr {
             w.write_all(&word.to_le_bytes())?;
         }
         Ok(())
+    }
+
+    pub fn size_of_count32(&self) -> usize {
+        4 + self.0.len() * 2
     }
 }
 

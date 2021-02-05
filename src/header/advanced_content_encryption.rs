@@ -45,6 +45,10 @@ impl<'a> EncryptedObjectRecord<'a> {
         w.write_all(self.data)?;
         Ok(())
     }
+
+    fn size_of(&self) -> usize {
+        2 + 2 + self.data.len()
+    }
 }
 
 impl<'a> ContentEncryptionRecord<'a> {
@@ -77,6 +81,10 @@ impl<'a> ContentEncryptionRecord<'a> {
         w.write_all(self.data)?;
         Ok(())
     }
+
+    fn size_of(&self) -> usize {
+        16 + 4 + 2 + self.encrypted_object_records.iter().map(|x| x.size_of()).sum::<usize>() + 4 + self.data.len()
+    }
 }
 
 impl<'a> AdvancedContentEncryptionData<'a> {
@@ -96,5 +104,9 @@ impl<'a> AdvancedContentEncryptionData<'a> {
             record.write(w)?
         }
         Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        2 + self.content_encryption_records.iter().map(|x| x.size_of()).sum::<usize>()
     }
 }
