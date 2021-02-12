@@ -96,3 +96,21 @@ pub const PAYLOAD_EXTENSION_SYSTEM_CONTENT_TYPE: Uuid         = Uuid::from_u128(
 pub const PAYLOAD_EXTENSION_SYSTEM_PIXEL_ASPECT_RATIO: Uuid   = Uuid::from_u128(0x1b1ee554f9ea4bc8821a376b74e4c4b8);
 pub const PAYLOAD_EXTENSION_SYSTEM_SAMPLE_DURATION: Uuid      = Uuid::from_u128(0xc6bd9450867f490783a3c77921b733ad);
 pub const PAYLOAD_EXTENSION_SYSTEM_ENCRYPTION_SAMPLE_ID: Uuid = Uuid::from_u128(0x6698b84e0afa4330aeb21c0a98d7a44d);
+
+#[cfg(test)]
+mod tests {
+    use crate::guid::HEADER_OBJECT;
+
+    use super::*;
+
+    #[test]
+    fn guids() {
+        assert_eq!(
+            guid(&[
+                0x30, 0x26, 0xb2, 0x75, 0x8e, 0x66, 0xcf, 0x11,
+                0xa6, 0xd9, 0x00, 0xaa, 0x00, 0x62, 0xce, 0x6c,
+            ]),
+            Ok((&b""[..], HEADER_OBJECT))
+        );
+    }
+}

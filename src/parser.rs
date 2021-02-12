@@ -1,4 +1,4 @@
-use nom::number::streaming::{le_u64};
+use nom::number::streaming::le_u64;
 
 use crate::{guid::*, header::*, object::*};
 
@@ -65,39 +65,13 @@ impl<'a> Container<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::guid::HEADER_OBJECT;
-
     use super::*;
 
     const BASIC_WMV: &'static [u8] = include_bytes!("../samples/basic.wmv");
 
     #[test]
-    fn guids() {
-        assert_eq!(
-            guid(&[
-                0x30, 0x26, 0xb2, 0x75, 0x8e, 0x66, 0xcf, 0x11,
-                0xa6, 0xd9, 0x00, 0xaa, 0x00, 0x62, 0xce, 0x6c,
-            ]),
-            Ok((&b""[..], HEADER_OBJECT))
-        );
-    }
-
-    #[test]
     fn basic_wmv() {
-        assert_eq!(
-            Container::parse(&BASIC_WMV),
-            Ok((&b""[..], Container{
-                header: HeaderObjects{
-                    reserved1: 1,
-                    reserved2: 2,
-                    objects: Vec::new(),
-                },
-                data: DataObject{
-                },
-                indices: IndexObjects{
-                    objects: vec![IndexObject{}],
-                },
-            }))
-        );
+        let (remaining, _data) = Container::parse(&BASIC_WMV).expect("to parse successfully");
+        assert_eq!(remaining.len(), 0);
     }
 }
