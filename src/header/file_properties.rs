@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use uuid::Uuid;
 use nom::number::streaming::{le_u32, le_u64};
 
@@ -48,4 +50,23 @@ impl FilePropertiesData {
             })
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        w.write_all(&self.file_id.as_bytes_ms())?;
+        w.write_all(&self.file_size.to_le_bytes())?;
+        w.write_all(&self.creation_date.to_le_bytes())?;
+        w.write_all(&self.data_packets_count.to_le_bytes())?;
+        w.write_all(&self.play_duration.to_le_bytes())?;
+        w.write_all(&self.send_duration.to_le_bytes())?;
+        w.write_all(&self.preroll.to_le_bytes())?;
+        w.write_all(&self.flags.to_le_bytes())?;
+        w.write_all(&self.minimum_data_packet_size.to_le_bytes())?;
+        w.write_all(&self.maximum_data_packet_size.to_le_bytes())?;
+        w.write_all(&self.maximum_bitrate.to_le_bytes())?;
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        16 + 8 + 8 + 8 + 8 + 8 + 8 + 4 + 4 + 4 + 4
+    }
 }

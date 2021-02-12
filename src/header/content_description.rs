@@ -131,30 +131,28 @@ mod tests {
     fn write_basic_content_descriptor() {
         let mut buf = Vec::new();
 
-        ContentDescriptionData{
+        HeaderObject::ContentDescription(ContentDescriptionData{
             title: WideStr::from_str("The Matrix Part 2 of 2\0"),
             author: WideStr::from_str("confuzed\0"),
             copyright: WideStr::from_str("\0"),
             description: WideStr::from_str("\0"),
             rating: WideStr::from_str("\0"),
-        }.write(&mut buf).expect("write to succeed");
+        }).write(&mut buf).expect("write to succeed");
 
-        // TODO(jchw): write entire header instead of comparing sub-slice
-        assert_eq!(buf.as_bytes(), &BASIC_CONTENT_DESCRIPTOR_BYTES[24..])
+        assert_eq!(buf.as_bytes(), &BASIC_CONTENT_DESCRIPTOR_BYTES[..])
     }
 
     #[test]
     fn size_of_basic_content_descriptor() {
-        // TODO(jchw): take sizeof entire header instead of just data
         assert_eq!(
-            ContentDescriptionData{
+            HeaderObject::ContentDescription(ContentDescriptionData{
                 title: WideStr::from_str("The Matrix Part 2 of 2\0"),
                 author: WideStr::from_str("confuzed\0"),
                 copyright: WideStr::from_str("\0"),
                 description: WideStr::from_str("\0"),
                 rating: WideStr::from_str("\0"),
-            }.size_of(),
-            BASIC_CONTENT_DESCRIPTOR_BYTES.len() - 24
+            }).size_of(),
+            BASIC_CONTENT_DESCRIPTOR_BYTES.len()
         )
     }
 }

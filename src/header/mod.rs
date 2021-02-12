@@ -26,6 +26,8 @@ pub mod stream_bitrate_properties;
 pub mod stream_prioritization;
 pub mod stream_properties;
 pub mod timecode_index_parameters;
+use std::{convert::TryInto, io::Write};
+
 use nom::number::streaming::{le_u32, le_u64, le_u8};
 
 use crate::{guid::*, object::*};
@@ -122,11 +124,128 @@ impl<'a> HeaderObject<'a> {
         )
     );
 
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let data_len: u64 = self.size_of().try_into()?;
+        match self {
+            HeaderObject::FileProperties(data) => {
+                w.write_all(&FILE_PROPERTIES_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::StreamProperties(data) => {
+                w.write_all(&STREAM_PROPERTIES_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::HeaderExtension(data) => {
+                w.write_all(&HEADER_EXTENSION_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::CodecList(data) => {
+                w.write_all(&CODEC_LIST_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::ScriptCommand(data) => {
+                w.write_all(&SCRIPT_COMMAND_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::Marker(data) => {
+                w.write_all(&MARKER_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::BitrateMutualExclusion(data) => {
+                w.write_all(&BITRATE_MUTUAL_EXCLUSION_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::ErrorCorrection(data) => {
+                w.write_all(&ERROR_CORRECTION_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::ContentDescription(data) => {
+                w.write_all(&CONTENT_DESCRIPTION_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::ExtendedContentDescription(data) => {
+                w.write_all(&EXTENDED_CONTENT_DESCRIPTION_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::StreamBitrateProperties(data) => {
+                w.write_all(&STREAM_BITRATE_PROPERTIES_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::ContentBranding(data) => {
+                w.write_all(&CONTENT_BRANDING_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::ContentEncryption(data) => {
+                w.write_all(&CONTENT_ENCRYPTION_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::ExtendedContentEncryption(data) => {
+                w.write_all(&EXTENDED_CONTENT_ENCRYPTION_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::DigitalSignature(data) => {
+                w.write_all(&DIGITAL_SIGNATURE_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            }
+            HeaderObject::Padding(size) => {
+                w.write_all(&PADDING_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                w.write_all(&vec![0u8; *size])?;
+            }
+            HeaderObject::Unknown(unk) => {
+                w.write_all(&unk.guid.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                w.write_all(unk.data)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        16 + 8 +
+        match self {
+            HeaderObject::FileProperties(data) => data.size_of(),
+            HeaderObject::StreamProperties(data) => data.size_of(),
+            HeaderObject::HeaderExtension(data) => data.size_of(),
+            HeaderObject::CodecList(data) => data.size_of(),
+            HeaderObject::ScriptCommand(data) => data.size_of(),
+            HeaderObject::Marker(data) => data.size_of(),
+            HeaderObject::BitrateMutualExclusion(data) => data.size_of(),
+            HeaderObject::ErrorCorrection(data) => data.size_of(),
+            HeaderObject::ContentDescription(data) => data.size_of(),
+            HeaderObject::ExtendedContentDescription(data) => data.size_of(),
+            HeaderObject::StreamBitrateProperties(data) => data.size_of(),
+            HeaderObject::ContentBranding(data) => data.size_of(),
+            HeaderObject::ContentEncryption(data) => data.size_of(),
+            HeaderObject::ExtendedContentEncryption(data) => data.size_of(),
+            HeaderObject::DigitalSignature(data) => data.size_of(),
+            HeaderObject::Padding(size) => *size,
+            HeaderObject::Unknown(unk) => unk.data.len(),
+        }
+    }
+
     named!(parse_many<Vec<HeaderObject>>, many0!(complete!(Self::parse)));
 }
 
 #[derive(Debug, PartialEq)]
 pub struct HeaderObjects<'a> {
+    pub reserved1: u8,
+    pub reserved2: u8,
     pub objects: Vec<HeaderObject<'a>>
 }
 
@@ -139,7 +258,25 @@ impl<'a> HeaderObjects<'a> {
             reserved1: le_u8 >>
             reserved2: le_u8 >>
             data: take!(size - 30) >>
-            (HeaderObjects{objects: HeaderObject::parse_many(data)?.1})
+            (HeaderObjects{reserved1, reserved2, objects: HeaderObject::parse_many(data)?.1})
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let size: u64 = self.size_of().try_into()?;
+        let num_header_objs: u32 = self.objects.len().try_into()?;
+        w.write_all(&HEADER_OBJECT.as_bytes_ms())?;
+        w.write_all(&size.to_le_bytes())?;
+        w.write_all(&num_header_objs.to_le_bytes())?;
+        w.write_all(&self.reserved1.to_le_bytes())?;
+        w.write_all(&self.reserved2.to_le_bytes())?;
+        for object in self.objects.iter() {
+            object.write(w)?;
+        }
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        16 + 8 + 4 + 1 + 1 + self.objects.iter().map(|x| x.size_of()).sum::<usize>()
+    }
 }

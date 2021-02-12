@@ -1,3 +1,5 @@
+use std::{convert::TryInto, io::Write};
+
 use nom::number::streaming::le_u16;
 
 use crate::widestr::*;
@@ -25,6 +27,19 @@ impl<'a> ContentDescriptor<'a> {
             (ContentDescriptor{name, value_type, value})
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let value_len: u16 = self.value.len().try_into()?;
+        self.name.write_count16(w)?;
+        w.write_all(&self.value_type.to_le_bytes())?;
+        w.write_all(&value_len.to_le_bytes())?;
+        w.write_all(self.value)?;
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        self.name.size_of_count16() + 2 + 2 + self.value.len()
+    }
 }
 
 impl<'a> ExtendedContentDescriptionData<'a> {
@@ -34,4 +49,17 @@ impl<'a> ExtendedContentDescriptionData<'a> {
             (ExtendedContentDescriptionData{descriptors})
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let descriptors_len: u32 = self.descriptors.len().try_into()?;
+        w.write_all(&descriptors_len.to_le_bytes())?;
+        for descriptor in self.descriptors.iter() {
+            descriptor.write(w)?;
+        }
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        2 + self.descriptors.iter().map(|x| x.size_of()).sum::<usize>()
+    }
 }

@@ -1,3 +1,5 @@
+use std::{convert::TryInto, io::Write};
+
 use nom::number::streaming::{le_u8, le_u16};
 
 use crate::widestr::*;
@@ -25,4 +27,19 @@ impl LanguageListData {
             })
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let language_id_records_len: u16 = self.language_id_records.len().try_into()?;
+        w.write_all(&language_id_records_len.to_le_bytes())?;
+        for language_id_record in self.language_id_records.iter() {
+            let language_id_record_len: u8 = language_id_record.size_of().try_into()?;
+            w.write_all(&language_id_record_len.to_le_bytes())?;
+            language_id_record.write(w)?;
+        }
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        2 + self.language_id_records.iter().map(|x| 1 + x.size_of()).sum::<usize>()
+    }
 }

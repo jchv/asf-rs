@@ -1,3 +1,5 @@
+use std::{convert::TryInto, io::Write};
+
 use uuid::Uuid;
 use nom::number::streaming::{le_u16, le_u32};
 
@@ -81,6 +83,116 @@ impl<'a> ExtensionHeaderObject<'a> {
         )
     );
 
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        match self {
+            ExtensionHeaderObject::ExtendedStreamProperties(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&EXTENDED_STREAM_PROPERTIES_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::AdvancedMutualExclusion(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&ADVANCED_MUTUAL_EXCLUSION_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::GroupMutualExclusion(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&GROUP_MUTUAL_EXCLUSION_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::StreamPrioritization(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&STREAM_PRIORITIZATION_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::BandwidthSharing(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&BANDWIDTH_SHARING_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::LanguageList(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&LANGUAGE_LIST_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::Metadata(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&METADATA_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::MetadataLibrary(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&METADATA_LIBRARY_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::IndexParameters(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&INDEX_PARAMETERS_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::MediaObjectIndexParameters(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&MEDIA_OBJECT_INDEX_PARAMETERS_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::TimecodeIndexParameters(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&TIMECODE_INDEX_PARAMETERS_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::Compatibility(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&COMPATIBILITY_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::AdvancedContentEncryption(data) => {
+                let data_len: u64 = data.size_of().try_into()?;
+                w.write_all(&ADVANCED_CONTENT_ENCRYPTION_OBJECT.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                data.write(w)?;
+            },
+            ExtensionHeaderObject::Unknown(unk) => {
+                let data_len: u64 = unk.data.len().try_into()?;
+                w.write_all(&unk.guid.as_bytes_ms())?;
+                w.write_all(&data_len.to_le_bytes())?;
+                w.write_all(unk.data)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        16 + 8 +
+        match self {
+            ExtensionHeaderObject::ExtendedStreamProperties(data) => data.size_of(),
+            ExtensionHeaderObject::AdvancedMutualExclusion(data) => data.size_of(),
+            ExtensionHeaderObject::GroupMutualExclusion(data) => data.size_of(),
+            ExtensionHeaderObject::StreamPrioritization(data) => data.size_of(),
+            ExtensionHeaderObject::BandwidthSharing(data) => data.size_of(),
+            ExtensionHeaderObject::LanguageList(data) => data.size_of(),
+            ExtensionHeaderObject::Metadata(data) => data.size_of(),
+            ExtensionHeaderObject::MetadataLibrary(data) => data.size_of(),
+            ExtensionHeaderObject::IndexParameters(data) => data.size_of(),
+            ExtensionHeaderObject::MediaObjectIndexParameters(data) => data.size_of(),
+            ExtensionHeaderObject::TimecodeIndexParameters(data) => data.size_of(),
+            ExtensionHeaderObject::Compatibility(data) => data.size_of(),
+            ExtensionHeaderObject::AdvancedContentEncryption(data) => data.size_of(),
+            ExtensionHeaderObject::Unknown(unk) => unk.data.len(),
+        }
+    }
+
     named!(parse_many<Vec<ExtensionHeaderObject>>, many0!(complete!(Self::parse)));
 }
 
@@ -105,4 +217,19 @@ impl<'a> HeaderExtensionData<'a> {
             })
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let extension_data_size: u32 = self.extension_objects.iter().map(|x| x.size_of()).sum::<usize>().try_into()?;
+        w.write_all(&self.reserved_1.as_bytes_ms())?;
+        w.write_all(&self.reserved_2.to_le_bytes())?;
+        w.write_all(&extension_data_size.to_le_bytes())?;
+        for extension_object in self.extension_objects.iter() {
+            extension_object.write(w)?;
+        }
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        16 + 2 + 4 + self.extension_objects.iter().map(|x| x.size_of()).sum::<usize>()
+    }
 }

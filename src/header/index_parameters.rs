@@ -1,3 +1,5 @@
+use std::{convert::TryInto, io::Write};
+
 use nom::number::streaming::{le_u16, le_u32};
 
 
@@ -24,6 +26,16 @@ impl IndexSpecifier {
             })
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        w.write_all(&self.stream_number.to_le_bytes())?;
+        w.write_all(&self.index_type.to_le_bytes())?;
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        2 + 2
+    }
 }
 
 impl IndexParametersData {
@@ -37,4 +49,18 @@ impl IndexParametersData {
             })
         )
     );
+
+    pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
+        let index_specifiers_len: u16 = self.index_specifiers.len().try_into()?;
+        w.write_all(&self.index_entry_time_interval.to_le_bytes())?;
+        w.write_all(&index_specifiers_len.to_le_bytes())?;
+        for index_specifier in self.index_specifiers.iter() {
+            index_specifier.write(w)?;
+        }
+        Ok(())
+    }
+
+    pub fn size_of(&self) -> usize {
+        4 + 2 + self.index_specifiers.iter().map(|x| x.size_of()).sum::<usize>()
+    }
 }

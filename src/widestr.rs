@@ -26,6 +26,10 @@ impl WideStr {
         Ok(())
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     pub fn size_of(&self) -> usize {
         self.0.len() * 2
     }

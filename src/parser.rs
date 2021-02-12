@@ -88,6 +88,8 @@ mod tests {
             Container::parse(&BASIC_WMV),
             Ok((&b""[..], Container{
                 header: HeaderObjects{
+                    reserved1: 1,
+                    reserved2: 2,
                     objects: Vec::new(),
                 },
                 data: DataObject{

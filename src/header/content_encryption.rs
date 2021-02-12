@@ -119,18 +119,16 @@ mod tests {
     fn write_basic_content_encryption() {
         let mut buf = Vec::new();
 
-        BASIC_CONTENT_ENCRYPTION_DATA.write(&mut buf).expect("write to succeed");
+        HeaderObject::ContentEncryption(BASIC_CONTENT_ENCRYPTION_DATA).write(&mut buf).expect("write to succeed");
 
-        // TODO(jchw): write entire header instead of comparing sub-slice
-        assert_eq!(buf.as_bytes(), &BASIC_CONTENT_ENCRYPTION_BYTES[24..])
+        assert_eq!(buf.as_bytes(), &BASIC_CONTENT_ENCRYPTION_BYTES[..])
     }
 
     #[test]
     fn size_of_basic_content_encryption() {
-        // TODO(jchw): take sizeof entire header instead of just data
         assert_eq!(
-            BASIC_CONTENT_ENCRYPTION_DATA.size_of(),
-            BASIC_CONTENT_ENCRYPTION_BYTES.len() - 24
+            HeaderObject::ContentEncryption(BASIC_CONTENT_ENCRYPTION_DATA).size_of(),
+            BASIC_CONTENT_ENCRYPTION_BYTES.len()
         )
     }
 }
