@@ -7,7 +7,7 @@ use nom::number::streaming::{le_u16, le_u32};
 pub struct WideStr(Vec<u16>);
 
 impl WideStr {
-    pub fn from_str(s: &str) -> Self {
+    pub fn new(s: &str) -> Self {
         let w: Vec<u16> = s.encode_utf16().collect();
         WideStr(w)
     }

@@ -118,11 +118,11 @@ mod tests {
         assert_eq!(
             HeaderObject::parse(BASIC_CONTENT_DESCRIPTOR_BYTES),
             Ok((&b""[..], HeaderObject::ContentDescription(ContentDescriptionData{
-                title: WideStr::from_str("The Matrix Part 2 of 2\0"),
-                author: WideStr::from_str("confuzed\0"),
-                copyright: WideStr::from_str("\0"),
-                description: WideStr::from_str("\0"),
-                rating: WideStr::from_str("\0"),
+                title: WideStr::new("The Matrix Part 2 of 2\0"),
+                author: WideStr::new("confuzed\0"),
+                copyright: WideStr::new("\0"),
+                description: WideStr::new("\0"),
+                rating: WideStr::new("\0"),
             })))
         )
     }
@@ -132,11 +132,11 @@ mod tests {
         let mut buf = Vec::new();
 
         HeaderObject::ContentDescription(ContentDescriptionData{
-            title: WideStr::from_str("The Matrix Part 2 of 2\0"),
-            author: WideStr::from_str("confuzed\0"),
-            copyright: WideStr::from_str("\0"),
-            description: WideStr::from_str("\0"),
-            rating: WideStr::from_str("\0"),
+            title: WideStr::new("The Matrix Part 2 of 2\0"),
+            author: WideStr::new("confuzed\0"),
+            copyright: WideStr::new("\0"),
+            description: WideStr::new("\0"),
+            rating: WideStr::new("\0"),
         }).write(&mut buf).expect("write to succeed");
 
         assert_eq!(buf.as_bytes(), &BASIC_CONTENT_DESCRIPTOR_BYTES[..])
@@ -146,11 +146,11 @@ mod tests {
     fn size_of_basic_content_descriptor() {
         assert_eq!(
             HeaderObject::ContentDescription(ContentDescriptionData{
-                title: WideStr::from_str("The Matrix Part 2 of 2\0"),
-                author: WideStr::from_str("confuzed\0"),
-                copyright: WideStr::from_str("\0"),
-                description: WideStr::from_str("\0"),
-                rating: WideStr::from_str("\0"),
+                title: WideStr::new("The Matrix Part 2 of 2\0"),
+                author: WideStr::new("confuzed\0"),
+                copyright: WideStr::new("\0"),
+                description: WideStr::new("\0"),
+                rating: WideStr::new("\0"),
             }).size_of(),
             BASIC_CONTENT_DESCRIPTOR_BYTES.len()
         )
