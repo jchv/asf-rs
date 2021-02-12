@@ -9,7 +9,7 @@ pub struct WideStr(Vec<u16>);
 impl WideStr {
     pub fn from_str(s: &str) -> Self {
         let w: Vec<u16> = s.encode_utf16().collect();
-        return WideStr(w);
+        WideStr(w)
     }
 
     pub fn to_str(&self) -> String {
@@ -28,6 +28,10 @@ impl WideStr {
 
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     pub fn size_of(&self) -> usize {
