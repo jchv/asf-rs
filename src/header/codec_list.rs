@@ -1,7 +1,7 @@
 use std::{convert::TryInto, io::Write};
 
 use uuid::Uuid;
-use nom::number::streaming::{le_u16, le_u32};
+use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 
 use crate::{guid::*, widestr::*};
 
@@ -21,16 +21,14 @@ pub struct CodecListData<'a> {
 }
 
 impl<'a> CodecEntry<'a> {
-    named!(pub parse<CodecEntry>,
-        do_parse!(
-            codec_type: le_u16 >>
-            codec_name: call!(WideStr::parse_count16) >>
-            codec_description: call!(WideStr::parse_count16) >>
-            codec_information_len: le_u16 >>
-            codec_information: take!(codec_information_len) >>
-            (CodecEntry{codec_type, codec_name, codec_description, codec_information})
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, codec_type) = le_u16(input)?;
+        let (input, codec_name) = WideStr::parse_count16(input)?;
+        let (input, codec_description) = WideStr::parse_count16(input)?;
+        let (input, codec_information_len) = le_u16(input)?;
+        let (input, codec_information) = take(codec_information_len)(input)?;
+        Ok((input, Self{codec_type, codec_name, codec_description, codec_information}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let codec_information_len: u16 = self.codec_information.len().try_into()?;
@@ -48,13 +46,11 @@ impl<'a> CodecEntry<'a> {
 }
 
 impl<'a> CodecListData<'a> {
-    named!(pub parse<CodecListData>,
-        do_parse!(
-            reserved: guid >>
-            codec_entries: length_count!(le_u32, CodecEntry::parse) >>
-            (CodecListData{reserved, codec_entries})
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, reserved) = guid(input)?;
+        let (input, codec_entries) = length_count(le_u32, CodecEntry::parse)(input)?;
+        Ok((input, Self{reserved, codec_entries}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let codec_entries_len: u32 = self.codec_entries.len().try_into()?;

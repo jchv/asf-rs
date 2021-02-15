@@ -28,7 +28,7 @@ pub mod stream_properties;
 pub mod timecode_index_parameters;
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::{le_u32, le_u64, le_u8};
+use nom::{IResult, bytes::streaming::{tag, take}, combinator::complete, error::ParseError, multi::many0, number::streaming::{le_u32, le_u64, le_u8}};
 
 use crate::{guid::*, object::*};
 
@@ -70,59 +70,48 @@ pub enum HeaderObject<'a> {
 }
 
 impl<'a> HeaderObject<'a> {
-    named!(pub parse<HeaderObject>,
-        switch!(object,
-            Object{guid: FILE_PROPERTIES_OBJECT, data} => do_parse!(
-                (HeaderObject::FileProperties(FilePropertiesData::parse(data)?.1))
-            ) |
-            Object{guid: STREAM_PROPERTIES_OBJECT, data} => do_parse!(
-                (HeaderObject::StreamProperties(StreamPropertiesData::parse(data)?.1))
-            ) |
-            Object{guid: HEADER_EXTENSION_OBJECT, data} => do_parse!(
-                (HeaderObject::HeaderExtension(HeaderExtensionData::parse(data)?.1))
-            ) |
-            Object{guid: CODEC_LIST_OBJECT, data} => do_parse!(
-                (HeaderObject::CodecList(CodecListData::parse(data)?.1))
-            ) |
-            Object{guid: SCRIPT_COMMAND_OBJECT, data} => do_parse!(
-                (HeaderObject::ScriptCommand(ScriptCommandData::parse(data)?.1))
-            ) |
-            Object{guid: MARKER_OBJECT, data} => do_parse!(
-                (HeaderObject::Marker(MarkerData::parse(data)?.1))
-            ) |
-            Object{guid: BITRATE_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
-                (HeaderObject::BitrateMutualExclusion(BitrateMutualExclusionData::parse(data)?.1))
-            ) |
-            Object{guid: ERROR_CORRECTION_OBJECT, data} => do_parse!(
-                (HeaderObject::ErrorCorrection(ErrorCorrectionData::parse(data)?.1))
-            ) |
-            Object{guid: CONTENT_DESCRIPTION_OBJECT, data} => do_parse!(
-                (HeaderObject::ContentDescription(ContentDescriptionData::parse(data)?.1))
-            ) |
-            Object{guid: EXTENDED_CONTENT_DESCRIPTION_OBJECT, data} => do_parse!(
-                (HeaderObject::ExtendedContentDescription(ExtendedContentDescriptionData::parse(data)?.1))
-            ) |
-            Object{guid: STREAM_BITRATE_PROPERTIES_OBJECT, data} => do_parse!(
-                (HeaderObject::StreamBitrateProperties(StreamBitratePropertiesData::parse(data)?.1))
-            ) |
-            Object{guid: CONTENT_BRANDING_OBJECT, data} => do_parse!(
-                (HeaderObject::ContentBranding(ContentBrandingData::parse(data)?.1))
-            ) |
-            Object{guid: CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
-                (HeaderObject::ContentEncryption(ContentEncryptionData::parse(data)?.1))
-            ) |
-            Object{guid: EXTENDED_CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
-                (HeaderObject::ExtendedContentEncryption(ExtendedContentEncryptionData::parse(data)?.1))
-            ) |
-            Object{guid: DIGITAL_SIGNATURE_OBJECT, data} => do_parse!(
-                (HeaderObject::DigitalSignature(DigitalSignatureData::parse(data)?.1))
-            ) |
-            Object{guid: PADDING_OBJECT, data} => do_parse!(
-                (HeaderObject::Padding(data.len()))
-            ) |
-            unknown => do_parse!((HeaderObject::Unknown(unknown)))
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, obj) = object(input)?;
+        Ok((input, match obj {
+            Object{guid: FILE_PROPERTIES_OBJECT, data} =>
+                (Self::FileProperties(FilePropertiesData::parse(data)?.1)),
+            Object{guid: STREAM_PROPERTIES_OBJECT, data} =>
+                (Self::StreamProperties(StreamPropertiesData::parse(data)?.1)),
+            Object{guid: HEADER_EXTENSION_OBJECT, data} =>
+                (Self::HeaderExtension(HeaderExtensionData::parse(data)?.1)),
+            Object{guid: CODEC_LIST_OBJECT, data} =>
+                (Self::CodecList(CodecListData::parse(data)?.1)),
+            Object{guid: SCRIPT_COMMAND_OBJECT, data} =>
+                (Self::ScriptCommand(ScriptCommandData::parse(data)?.1)),
+            Object{guid: MARKER_OBJECT, data} =>
+                (Self::Marker(MarkerData::parse(data)?.1)),
+            Object{guid: BITRATE_MUTUAL_EXCLUSION_OBJECT, data} =>
+                (Self::BitrateMutualExclusion(BitrateMutualExclusionData::parse(data)?.1)),
+            Object{guid: ERROR_CORRECTION_OBJECT, data} =>
+                (Self::ErrorCorrection(ErrorCorrectionData::parse(data)?.1)),
+            Object{guid: CONTENT_DESCRIPTION_OBJECT, data} =>
+                (Self::ContentDescription(ContentDescriptionData::parse(data)?.1)),
+            Object{guid: EXTENDED_CONTENT_DESCRIPTION_OBJECT, data} =>
+                (Self::ExtendedContentDescription(ExtendedContentDescriptionData::parse(data)?.1)),
+            Object{guid: STREAM_BITRATE_PROPERTIES_OBJECT, data} =>
+                (Self::StreamBitrateProperties(StreamBitratePropertiesData::parse(data)?.1)),
+            Object{guid: CONTENT_BRANDING_OBJECT, data} =>
+                (Self::ContentBranding(ContentBrandingData::parse(data)?.1)),
+            Object{guid: CONTENT_ENCRYPTION_OBJECT, data} =>
+                (Self::ContentEncryption(ContentEncryptionData::parse(data)?.1)),
+            Object{guid: EXTENDED_CONTENT_ENCRYPTION_OBJECT, data} =>
+                (Self::ExtendedContentEncryption(ExtendedContentEncryptionData::parse(data)?.1)),
+            Object{guid: DIGITAL_SIGNATURE_OBJECT, data} =>
+                (Self::DigitalSignature(DigitalSignatureData::parse(data)?.1)),
+            Object{guid: PADDING_OBJECT, data} =>
+                (Self::Padding(data.len())),
+            unknown => Self::Unknown(unknown)
+        }))
+    }
+
+    pub fn parse_many<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Vec<Self>, E> {
+        many0(complete(Self::parse))(input)
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let data_len: u64 = self.size_of().try_into()?;
@@ -238,8 +227,6 @@ impl<'a> HeaderObject<'a> {
             HeaderObject::Unknown(unk) => unk.data.len(),
         }
     }
-
-    named!(parse_many<Vec<HeaderObject>>, many0!(complete!(Self::parse)));
 }
 
 #[derive(Debug, PartialEq)]
@@ -250,17 +237,15 @@ pub struct HeaderObjects<'a> {
 }
 
 impl<'a> HeaderObjects<'a> {
-    named!(pub parse<HeaderObjects>,
-        do_parse!(
-            guid: tag!(HEADER_OBJECT.as_bytes_ms()) >>
-            size: le_u64 >>
-            num_header_objs: le_u32 >>
-            reserved1: le_u8 >>
-            reserved2: le_u8 >>
-            data: take!(size - 30) >>
-            (HeaderObjects{reserved1, reserved2, objects: HeaderObject::parse_many(data)?.1})
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, _guid) = tag(HEADER_OBJECT.as_bytes_ms())(input)?;
+        let (input, size) = le_u64(input)?;
+        let (input, _num_header_objs) = le_u32(input)?;
+        let (input, reserved1) = le_u8(input)?;
+        let (input, reserved2) = le_u8(input)?;
+        let (input, data) = take(size - 30)(input)?;
+        Ok((input, Self{reserved1, reserved2, objects: HeaderObject::parse_many(data)?.1}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let size: u64 = self.size_of().try_into()?;

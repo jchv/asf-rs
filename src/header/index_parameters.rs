@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::{le_u16, le_u32};
+use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 
 
 #[derive(Debug, PartialEq)]
@@ -16,16 +16,14 @@ pub struct IndexParametersData {
 }
 
 impl IndexSpecifier {
-    named!(pub parse<Self>,
-        do_parse!(
-            stream_number: le_u16 >>
-            index_type: le_u16 >>
-            (Self{
-                stream_number,
-                index_type,
-            })
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, stream_number) = le_u16(input)?;
+        let (input, index_type) = le_u16(input)?;
+        Ok((input, Self{
+            stream_number,
+            index_type,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         w.write_all(&self.stream_number.to_le_bytes())?;
@@ -39,16 +37,14 @@ impl IndexSpecifier {
 }
 
 impl IndexParametersData {
-    named!(pub parse<Self>,
-        do_parse!(
-            index_entry_time_interval: le_u32 >>
-            index_specifiers: length_count!(le_u16, IndexSpecifier::parse) >>
-            (Self{
-                index_entry_time_interval,
-                index_specifiers,
-            })
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, index_entry_time_interval) = le_u32(input)?;
+        let (input, index_specifiers) = length_count(le_u16, IndexSpecifier::parse)(input)?;
+        Ok((input, Self{
+            index_entry_time_interval,
+            index_specifiers,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let index_specifiers_len: u16 = self.index_specifiers.len().try_into()?;

@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::{le_u16, le_u32};
+use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 
 
 #[derive(Debug, PartialEq)]
@@ -15,13 +15,11 @@ pub struct StreamBitratePropertiesData {
 }
 
 impl BitrateRecord {
-    named!(pub parse<Self>,
-        do_parse!(
-            flags: le_u16 >>
-            average_bitrate: le_u32 >>
-            (Self{flags, average_bitrate})
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, flags) = le_u16(input)?;
+        let (input, average_bitrate) = le_u32(input)?;
+        Ok((input, Self{flags, average_bitrate}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         w.write_all(&self.flags.to_le_bytes())?;
@@ -35,12 +33,10 @@ impl BitrateRecord {
 }
 
 impl StreamBitratePropertiesData {
-    named!(pub parse<Self>,
-        do_parse!(
-            bitrate_records: length_count!(le_u16, BitrateRecord::parse) >>
-            (Self{bitrate_records})
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, bitrate_records) = length_count(le_u16, BitrateRecord::parse)(input)?;
+        Ok((input, Self{bitrate_records}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let bitrate_records_len: u16 = self.bitrate_records.len().try_into()?;

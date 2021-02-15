@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::{le_u16};
+use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16}};
 
 
 #[derive(Debug, PartialEq)]
@@ -15,16 +15,14 @@ pub struct StreamPrioritizationData {
 }
 
 impl PriorityRecord {
-    named!(pub parse<Self>,
-        do_parse!(
-            stream_number: le_u16 >>
-            priority_flags: le_u16 >>
-            (Self{
-                stream_number,
-                priority_flags,
-            })
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, stream_number) = le_u16(input)?;
+        let (input, priority_flags) = le_u16(input)?;
+        Ok((input, Self{
+            stream_number,
+            priority_flags,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         w.write_all(&self.stream_number.to_le_bytes())?;
@@ -38,12 +36,10 @@ impl PriorityRecord {
 }
 
 impl StreamPrioritizationData {
-    named!(pub parse<Self>,
-        do_parse!(
-            priority_records: length_count!(le_u16, PriorityRecord::parse) >>
-            (Self{priority_records})
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, priority_records) = length_count(le_u16, PriorityRecord::parse)(input)?;
+        Ok((input, Self{priority_records}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let priority_records_len: u16 = self.priority_records.len().try_into()?;

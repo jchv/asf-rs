@@ -1,7 +1,7 @@
 use std::{convert::TryInto, io::Write};
 
 use uuid::Uuid;
-use nom::number::streaming::{le_u16, le_u32, le_u64};
+use nom::{IResult, error::ParseError, multi::count, number::streaming::{le_u16, le_u32, le_u64}};
 
 use crate::{guid::*, widestr::*};
 
@@ -25,17 +25,15 @@ pub struct MarkerData {
 }
 
 impl Marker {
-    named!(pub parse<Self>,
-        do_parse!(
-            offset: le_u64 >>
-            presentation_time: le_u64 >>
-            entry_length: le_u16 >>
-            send_time: le_u32 >>
-            flags: le_u32 >>
-            marker_description: call!(WideStr::parse_count32) >>
-            (Self{offset, presentation_time, entry_length, send_time, flags, marker_description})
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, offset) = le_u64(input)?;
+        let (input, presentation_time) = le_u64(input)?;
+        let (input, entry_length) = le_u16(input)?;
+        let (input, send_time) = le_u32(input)?;
+        let (input, flags) = le_u32(input)?;
+        let (input, marker_description) = WideStr::parse_count32(input)?;
+        Ok((input, Self{offset, presentation_time, entry_length, send_time, flags, marker_description}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         w.write_all(&self.offset.to_le_bytes())?;
@@ -53,16 +51,14 @@ impl Marker {
 }
 
 impl MarkerData {
-    named!(pub parse<Self>,
-        do_parse!(
-            reserved_1: guid >>
-            markers_count: le_u32 >>
-            reserved_2: le_u16 >>
-            name: call!(WideStr::parse_count16) >>
-            markers: count!(Marker::parse, markers_count as _) >>
-            (Self{reserved_1, reserved_2, name, markers})
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, reserved_1) = guid(input)?;
+        let (input, markers_count) = le_u32(input)?;
+        let (input, reserved_2) = le_u16(input)?;
+        let (input, name) = WideStr::parse_count16(input)?;
+        let (input, markers) = count(Marker::parse, markers_count as _)(input)?;
+        Ok((input, Self{reserved_1, reserved_2, name, markers}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let markers_len: u32 = self.markers.len().try_into()?;

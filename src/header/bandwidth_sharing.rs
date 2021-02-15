@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::{le_u16, le_u32};
+use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 use uuid::Uuid;
 
 use crate::guid::*;
@@ -15,20 +15,18 @@ pub struct BandwidthSharingData {
 }
 
 impl BandwidthSharingData {
-    named!(pub parse<Self>,
-        do_parse!(
-            sharing_type: guid >>
-            data_bitrate: le_u32 >>
-            buffer_size: le_u32 >>
-            stream_numbers: length_count!(le_u16, le_u16) >>
-            (Self{
-                sharing_type,
-                data_bitrate,
-                buffer_size,
-                stream_numbers,
-            })
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, sharing_type) = guid(input)?;
+        let (input, data_bitrate) = le_u32(input)?;
+        let (input, buffer_size) = le_u32(input)?;
+        let (input, stream_numbers) = length_count(le_u16, le_u16)(input)?;
+        Ok((input, Self{
+            sharing_type,
+            data_bitrate,
+            buffer_size,
+            stream_numbers,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let stream_numbers_len: u16 = self.stream_numbers.len().try_into()?;

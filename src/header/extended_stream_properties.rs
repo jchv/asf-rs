@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::{le_u16, le_u32, le_u64};
+use nom::{IResult, bytes::streaming::take, combinator::opt, error::ParseError, multi::count, number::streaming::{le_u16, le_u32, le_u64}};
 use uuid::Uuid;
 
 use crate::{guid::*, object::*, widestr::*};
@@ -41,17 +41,15 @@ pub struct ExtendedStreamPropertiesData<'a> {
 }
 
 impl StreamName {
-    named!(pub parse<Self>,
-        do_parse!(
-            language_id_index: le_u16 >>
-            stream_name_length: le_u16 >>
-            stream_name: take!(stream_name_length) >>
-            (Self{
-                language_id_index,
-                stream_name: WideStr::parse(stream_name)?.1,
-            })
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, language_id_index) = le_u16(input)?;
+        let (input, stream_name_length) = le_u16(input)?;
+        let (input, stream_name) = take(stream_name_length)(input)?;
+        Ok((input, Self{
+            language_id_index,
+            stream_name: WideStr::parse(stream_name)?.1,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let stream_name_len: u16 = self.stream_name.size_of().try_into()?;
@@ -67,19 +65,17 @@ impl StreamName {
 }
 
 impl<'a> PayloadExtensionSystem<'a> {
-    named!(pub parse<PayloadExtensionSystem>,
-        do_parse!(
-            id: guid >>
-            data_size: le_u16 >>
-            info_length: le_u32 >>
-            info: take!(info_length) >>
-            (PayloadExtensionSystem{
-                id,
-                data_size,
-                info,
-            })
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, id) = guid(input)?;
+        let (input, data_size) = le_u16(input)?;
+        let (input, info_length) = le_u32(input)?;
+        let (input, info) = take(info_length)(input)?;
+        Ok((input, PayloadExtensionSystem{
+            id,
+            data_size,
+            info,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let info_len: u32 = self.info.len().try_into()?;
@@ -96,49 +92,47 @@ impl<'a> PayloadExtensionSystem<'a> {
 }
 
 impl<'a> ExtendedStreamPropertiesData<'a> {
-    named!(pub parse<ExtendedStreamPropertiesData>,
-        do_parse!(
-            start_time: le_u64 >>
-            end_time: le_u64 >>
-            data_bitrate: le_u32 >>
-            buffer_size: le_u32 >>
-            initial_buffer_fullness: le_u32 >>
-            alternate_data_bitrate: le_u32 >>
-            alternate_buffer_size: le_u32 >>
-            alternate_initial_buffer_fullness: le_u32 >>
-            maximum_object_size: le_u32 >>
-            flags: le_u32 >>
-            stream_number: le_u16 >>
-            stream_language_id_index: le_u16 >>
-            average_time_per_frame: le_u64 >>
-            stream_name_count: le_u16 >>
-            payload_extension_system_count: le_u16 >>
-            stream_names: count!(StreamName::parse, stream_name_count.into()) >>
-            payload_extension_systems: count!(PayloadExtensionSystem::parse, payload_extension_system_count.into()) >>
-            stream_properties_object: opt!(object) >>
-            (ExtendedStreamPropertiesData{
-                start_time,
-                end_time,
-                data_bitrate,
-                buffer_size,
-                initial_buffer_fullness,
-                alternate_data_bitrate,
-                alternate_buffer_size,
-                alternate_initial_buffer_fullness,
-                maximum_object_size,
-                flags,
-                stream_number,
-                stream_language_id_index,
-                average_time_per_frame,
-                stream_names,
-                payload_extension_systems,
-                stream_properties_object: stream_properties_object
-                    .map(|x| StreamPropertiesData::parse(x.data))
-                    .map_or(Ok(None), |r| r.map(Some))?
-                    .map(|x| x.1),
-            })
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, start_time) = le_u64(input)?;
+        let (input, end_time) = le_u64(input)?;
+        let (input, data_bitrate) = le_u32(input)?;
+        let (input, buffer_size) = le_u32(input)?;
+        let (input, initial_buffer_fullness) = le_u32(input)?;
+        let (input, alternate_data_bitrate) = le_u32(input)?;
+        let (input, alternate_buffer_size) = le_u32(input)?;
+        let (input, alternate_initial_buffer_fullness) = le_u32(input)?;
+        let (input, maximum_object_size) = le_u32(input)?;
+        let (input, flags) = le_u32(input)?;
+        let (input, stream_number) = le_u16(input)?;
+        let (input, stream_language_id_index) = le_u16(input)?;
+        let (input, average_time_per_frame) = le_u64(input)?;
+        let (input, stream_name_count) = le_u16(input)?;
+        let (input, payload_extension_system_count) = le_u16(input)?;
+        let (input, stream_names) = count(StreamName::parse, stream_name_count.into())(input)?;
+        let (input, payload_extension_systems) = count(PayloadExtensionSystem::parse, payload_extension_system_count.into())(input)?;
+        let (input, stream_properties_object) = opt(object)(input)?;
+        Ok((input, ExtendedStreamPropertiesData{
+            start_time,
+            end_time,
+            data_bitrate,
+            buffer_size,
+            initial_buffer_fullness,
+            alternate_data_bitrate,
+            alternate_buffer_size,
+            alternate_initial_buffer_fullness,
+            maximum_object_size,
+            flags,
+            stream_number,
+            stream_language_id_index,
+            average_time_per_frame,
+            stream_names,
+            payload_extension_systems,
+            stream_properties_object: stream_properties_object
+                .map(|x| StreamPropertiesData::parse(x.data))
+                .map_or(Ok(None), |r| r.map(Some))?
+                .map(|x| x.1),
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let stream_name_count: u16 = self.stream_names.len().try_into()?;

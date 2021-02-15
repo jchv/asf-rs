@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::le_u32;
+use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u32};
 
 
 #[derive(Debug, PartialEq)]
@@ -9,15 +9,13 @@ pub struct ExtendedContentEncryptionData<'a> {
 }
 
 impl<'a> ExtendedContentEncryptionData<'a> {
-    named!(pub parse<ExtendedContentEncryptionData>,
-        do_parse!(
-            data_size: le_u32 >>
-            data: take!(data_size) >>
-            (ExtendedContentEncryptionData{
-                data,
-            })
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, data_size) = le_u32(input)?;
+        let (input, data) = take(data_size)(input)?;
+        Ok((input, ExtendedContentEncryptionData{
+            data,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let data_len: u32 = self.data.len().try_into()?;

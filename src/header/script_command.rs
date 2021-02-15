@@ -1,7 +1,7 @@
 use std::{convert::TryInto, io::Write};
 
 use uuid::Uuid;
-use nom::number::streaming::{le_u16, le_u32};
+use nom::{IResult, error::ParseError, multi::count, number::streaming::{le_u16, le_u32}};
 
 use crate::{guid::*, widestr::*};
 
@@ -21,14 +21,12 @@ pub struct ScriptCommandData {
 }
 
 impl Command {
-    named!(pub parse<Self>,
-        do_parse!(
-            presentation_time: le_u32 >>
-            type_index: le_u16 >>
-            command_name: call!(WideStr::parse_count16) >>
-            (Self{presentation_time, type_index, command_name})
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, presentation_time) = le_u32(input)?;
+        let (input, type_index) = le_u16(input)?;
+        let (input, command_name) = WideStr::parse_count16(input)?;
+        Ok((input, Self{presentation_time, type_index, command_name}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         w.write_all(&self.presentation_time.to_le_bytes())?;
@@ -43,16 +41,14 @@ impl Command {
 }
 
 impl ScriptCommandData {
-    named!(pub parse<Self>,
-        do_parse!(
-            reserved: guid >>
-            commands_count: le_u16 >>
-            command_types_count: le_u16 >>
-            command_types: count!(WideStr::parse_count16, command_types_count.into()) >>
-            commands: count!(Command::parse, commands_count.into()) >>
-            (Self{reserved, command_types, commands})
-        )
-    );
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, reserved) = guid(input)?;
+        let (input, commands_count) = le_u16(input)?;
+        let (input, command_types_count) = le_u16(input)?;
+        let (input, command_types) = count(WideStr::parse_count16, command_types_count.into())(input)?;
+        let (input, commands) = count(Command::parse, commands_count.into())(input)?;
+        Ok((input, Self{reserved, command_types, commands}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let command_types_len: u16 = self.command_types.len().try_into()?;

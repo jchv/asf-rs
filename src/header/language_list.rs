@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::{le_u8, le_u16};
+use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u8, le_u16}};
 
 use crate::widestr::*;
 
@@ -11,22 +11,16 @@ pub struct LanguageListData {
 }
 
 impl LanguageListData {
-    named!(parse_id<WideStr>,
-        do_parse!(
-            length: le_u8 >>
-            data: take!(length) >>
-            (WideStr::parse(data)?.1)
-        )
-    );
-
-    named!(pub parse<Self>,
-        do_parse!(
-            language_id_records: length_count!(le_u16, Self::parse_id) >>
-            (Self{
-                language_id_records,
-            })
-        )
-    );
+    fn parse_id<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], WideStr, E> {
+        let (input, length) = le_u8(input)?;
+        let (input, data) = take(length)(input)?;
+        Ok((input, WideStr::parse(data)?.1))
+    }
+    
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, language_id_records) = length_count(le_u16, Self::parse_id)(input)?;
+        Ok((input, Self{language_id_records}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let language_id_records_len: u16 = self.language_id_records.len().try_into()?;

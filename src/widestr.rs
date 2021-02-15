@@ -1,6 +1,6 @@
 use std::{convert::TryInto, fmt, io::Write};
 
-use nom::number::streaming::{le_u16, le_u32};
+use nom::{IResult, combinator::{complete, eof, map}, error::ParseError, multi::{length_count, many0}, number::streaming::{le_u16, le_u32}, sequence::terminated};
 
 
 #[derive(PartialEq)]
@@ -16,8 +16,9 @@ impl WideStr {
         String::from_utf16_lossy(&self.0)
     }
 
-    named!(pub parse<WideStr>,
-        map!(terminated!(many0!(complete!(le_u16)), eof!()), |x| WideStr(x)));
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        map(terminated(many0(complete(le_u16)), eof), |x| WideStr(x))(input)
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         for word in self.0.iter() {
@@ -38,8 +39,9 @@ impl WideStr {
         self.0.len() * 2
     }
 
-    named!(pub parse_count16<WideStr>,
-        map!(length_count!(le_u16, le_u16), |x| WideStr(x)));
+    pub fn parse_count16<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        map(length_count(le_u16, le_u16), |x| WideStr(x))(input)
+    }
 
     pub fn write_count16<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let count: u16 = self.0.len().try_into()?;
@@ -54,8 +56,9 @@ impl WideStr {
         2 + self.0.len() * 2
     }
 
-    named!(pub parse_count32<WideStr>,
-        map!(length_count!(le_u32, le_u16), |x| WideStr(x)));
+    pub fn parse_count32<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        map(length_count(le_u32, le_u16), |x| WideStr(x))(input)
+    }
 
     pub fn write_count32<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let count: u32 = self.0.len().try_into()?;

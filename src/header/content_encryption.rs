@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::le_u32;
+use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u32};
 
 
 #[derive(Debug, PartialEq)]
@@ -12,24 +12,23 @@ pub struct ContentEncryptionData<'a> {
 }
 
 impl<'a> ContentEncryptionData<'a> {
-    named!(pub parse<ContentEncryptionData>,
-        do_parse!(
-            secret_data_length: le_u32 >>
-            secret_data: take!(secret_data_length) >>
-            protection_type_length: le_u32 >>
-            protection_type: take!(protection_type_length) >>
-            key_id_length: le_u32 >>
-            key_id: take!(key_id_length) >>
-            license_url_length: le_u32 >>
-            license_url: take!(license_url_length) >>
-            (ContentEncryptionData{
-                secret_data,
-                protection_type,
-                key_id,
-                license_url,
-            })
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, secret_data_length) = le_u32(input)?;
+        let (input, secret_data) = take(secret_data_length)(input)?;
+        let (input, protection_type_length) = le_u32(input)?;
+        let (input, protection_type) = take(protection_type_length)(input)?;
+        let (input, key_id_length) = le_u32(input)?;
+        let (input, key_id) = take(key_id_length)(input)?;
+        let (input, license_url_length) = le_u32(input)?;
+        let (input, license_url) = take(license_url_length)(input)?;
+
+        Ok((input, Self{
+            secret_data,
+            protection_type,
+            key_id,
+            license_url,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let secret_data_len: u32 = self.secret_data.len().try_into()?;
@@ -59,7 +58,7 @@ impl<'a> ContentEncryptionData<'a> {
 
 #[cfg(test)]
 mod tests {
-    use nom::AsBytes;
+    use nom::{AsBytes, error::VerboseError};
 
     use crate::header::*;
 
@@ -110,7 +109,7 @@ mod tests {
     #[test]
     fn parse_basic_content_encryption() {
         assert_eq!(
-            HeaderObject::parse(BASIC_CONTENT_ENCRYPTION_BYTES),
+            HeaderObject::parse::<VerboseError<_>>(BASIC_CONTENT_ENCRYPTION_BYTES),
             Ok((&b""[..], HeaderObject::ContentEncryption(BASIC_CONTENT_ENCRYPTION_DATA)))
         )
     }

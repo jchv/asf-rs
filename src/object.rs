@@ -1,9 +1,8 @@
 
-use nom::number::streaming::le_u64;
+use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u64};
 use uuid::Uuid;
 
 use crate::guid::*;
-
 
 #[derive(Debug, PartialEq)]
 pub struct ObjectHeader {
@@ -17,14 +16,14 @@ pub struct Object<'a> {
     pub data: &'a [u8],
 }
 
-named!(pub object_header<ObjectHeader>,
-    do_parse!(guid: guid >> size: le_u64 >> (ObjectHeader{guid, size}))
-);
+pub fn object_header<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], ObjectHeader, E> {
+    let (input, guid) = guid(input)?;
+    let (input, size) = le_u64(input)?;
+    Ok((input, ObjectHeader{guid, size}))
+}
 
-named!(pub object<Object>,
-    do_parse!(
-        header: object_header >>
-        data: take!(header.size - 24) >>
-        (Object{guid: header.guid, data})
-    )
-);
+pub fn object<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Object, E> {
+    let (input, header) = object_header(input)?;
+    let (input, data) = take(header.size - 24)(input)?;
+    Ok((input, Object{guid: header.guid, data}))
+}

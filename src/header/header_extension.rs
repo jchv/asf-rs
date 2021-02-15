@@ -1,7 +1,7 @@
 use std::{convert::TryInto, io::Write};
 
 use uuid::Uuid;
-use nom::number::streaming::{le_u16, le_u32};
+use nom::{IResult, bytes::streaming::take, combinator::complete, error::ParseError, multi::many0, number::streaming::{le_u16, le_u32}};
 
 use crate::{guid::*, object::*};
 
@@ -38,50 +38,42 @@ pub enum ExtensionHeaderObject<'a> {
 }
 
 impl<'a> ExtensionHeaderObject<'a> {
-    named!(pub parse<ExtensionHeaderObject>,
-        switch!(object,
-            Object{guid: EXTENDED_STREAM_PROPERTIES_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::ExtendedStreamProperties(ExtendedStreamPropertiesData::parse(data)?.1))
-            ) |
-            Object{guid: ADVANCED_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::AdvancedMutualExclusion(AdvancedMutualExclusionData::parse(data)?.1))
-            ) |
-            Object{guid: GROUP_MUTUAL_EXCLUSION_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::GroupMutualExclusion(GroupMutualExclusionData::parse(data)?.1))
-            ) |
-            Object{guid: STREAM_PRIORITIZATION_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::StreamPrioritization(StreamPrioritizationData::parse(data)?.1))
-            ) |
-            Object{guid: BANDWIDTH_SHARING_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::BandwidthSharing(BandwidthSharingData::parse(data)?.1))
-            ) |
-            Object{guid: LANGUAGE_LIST_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::LanguageList(LanguageListData::parse(data)?.1))
-            ) |
-            Object{guid: METADATA_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::Metadata(MetadataData::parse(data)?.1))
-            ) |
-            Object{guid: METADATA_LIBRARY_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::MetadataLibrary(MetadataLibraryData::parse(data)?.1))
-            ) |
-            Object{guid: INDEX_PARAMETERS_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::IndexParameters(IndexParametersData::parse(data)?.1))
-            ) |
-            Object{guid: MEDIA_OBJECT_INDEX_PARAMETERS_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::MediaObjectIndexParameters(MediaObjectIndexParametersData::parse(data)?.1))
-            ) |
-            Object{guid: TIMECODE_INDEX_PARAMETERS_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::TimecodeIndexParameters(TimecodeIndexParametersData::parse(data)?.1))
-            ) |
-            Object{guid: COMPATIBILITY_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::Compatibility(CompatibilityData::parse(data)?.1))
-            ) |
-            Object{guid: ADVANCED_CONTENT_ENCRYPTION_OBJECT, data} => do_parse!(
-                (ExtensionHeaderObject::AdvancedContentEncryption(AdvancedContentEncryptionData::parse(data)?.1))
-            ) |
-            unknown => do_parse!((ExtensionHeaderObject::Unknown(unknown)))
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, obj) = object(input)?;
+        Ok((input, match obj {
+            Object{guid: EXTENDED_STREAM_PROPERTIES_OBJECT, data} =>
+                (Self::ExtendedStreamProperties(ExtendedStreamPropertiesData::parse(data)?.1)),
+            Object{guid: ADVANCED_MUTUAL_EXCLUSION_OBJECT, data} =>
+                (Self::AdvancedMutualExclusion(AdvancedMutualExclusionData::parse(data)?.1)),
+            Object{guid: GROUP_MUTUAL_EXCLUSION_OBJECT, data} =>
+                (Self::GroupMutualExclusion(GroupMutualExclusionData::parse(data)?.1)),
+            Object{guid: STREAM_PRIORITIZATION_OBJECT, data} =>
+                (Self::StreamPrioritization(StreamPrioritizationData::parse(data)?.1)),
+            Object{guid: BANDWIDTH_SHARING_OBJECT, data} =>
+                (Self::BandwidthSharing(BandwidthSharingData::parse(data)?.1)),
+            Object{guid: LANGUAGE_LIST_OBJECT, data} =>
+                (Self::LanguageList(LanguageListData::parse(data)?.1)),
+            Object{guid: METADATA_OBJECT, data} =>
+                (Self::Metadata(MetadataData::parse(data)?.1)),
+            Object{guid: METADATA_LIBRARY_OBJECT, data} =>
+                (Self::MetadataLibrary(MetadataLibraryData::parse(data)?.1)),
+            Object{guid: INDEX_PARAMETERS_OBJECT, data} =>
+                (Self::IndexParameters(IndexParametersData::parse(data)?.1)),
+            Object{guid: MEDIA_OBJECT_INDEX_PARAMETERS_OBJECT, data} =>
+                (Self::MediaObjectIndexParameters(MediaObjectIndexParametersData::parse(data)?.1)),
+            Object{guid: TIMECODE_INDEX_PARAMETERS_OBJECT, data} =>
+                (Self::TimecodeIndexParameters(TimecodeIndexParametersData::parse(data)?.1)),
+            Object{guid: COMPATIBILITY_OBJECT, data} =>
+                (Self::Compatibility(CompatibilityData::parse(data)?.1)),
+            Object{guid: ADVANCED_CONTENT_ENCRYPTION_OBJECT, data} =>
+                (Self::AdvancedContentEncryption(AdvancedContentEncryptionData::parse(data)?.1)),
+            unknown => Self::Unknown(unknown),
+        }))
+    }
+
+    pub fn parse_many<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Vec<Self>, E> {
+        many0(complete(Self::parse))(input)
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         match self {
@@ -192,8 +184,6 @@ impl<'a> ExtensionHeaderObject<'a> {
             ExtensionHeaderObject::Unknown(unk) => unk.data.len(),
         }
     }
-
-    named!(parse_many<Vec<ExtensionHeaderObject>>, many0!(complete!(Self::parse)));
 }
 
 #[derive(Debug, PartialEq)]
@@ -204,19 +194,17 @@ pub struct HeaderExtensionData<'a> {
 }
 
 impl<'a> HeaderExtensionData<'a> {
-    named!(pub parse<HeaderExtensionData>,
-        do_parse!(
-            reserved_1: guid >>
-            reserved_2: le_u16 >>
-            extension_data_size: le_u32 >>
-            extension_data: take!(extension_data_size) >>
-            (HeaderExtensionData{
-                reserved_1,
-                reserved_2,
-                extension_objects: ExtensionHeaderObject::parse_many(extension_data)?.1,
-            })
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, reserved_1) = guid(input)?;
+        let (input, reserved_2) = le_u16(input)?;
+        let (input, extension_data_size) = le_u32(input)?;
+        let (input, extension_data) = take(extension_data_size)(input)?;
+        Ok((input, HeaderExtensionData{
+            reserved_1,
+            reserved_2,
+            extension_objects: ExtensionHeaderObject::parse_many(extension_data)?.1,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let extension_data_size: u32 = self.extension_objects.iter().map(|x| x.size_of()).sum::<usize>().try_into()?;

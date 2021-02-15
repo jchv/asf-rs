@@ -1,7 +1,7 @@
 use std::{convert::TryInto, io::Write};
 
 use uuid::Uuid;
-use nom::number::streaming::le_u32;
+use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u32};
 
 use crate::guid::*;
 
@@ -13,14 +13,13 @@ pub struct ErrorCorrectionData<'a> {
 }
 
 impl<'a> ErrorCorrectionData<'a> {
-    named!(pub parse<ErrorCorrectionData>,
-        do_parse!(
-            error_correction_type: guid >>
-            error_correction_data_length: le_u32 >>
-            error_correction_data: take!(error_correction_data_length) >>
-            (ErrorCorrectionData{error_correction_type, error_correction_data})
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, error_correction_type) = guid(input)?;
+        let (input, error_correction_data_length) = le_u32(input)?;
+        let (input, error_correction_data) = take(error_correction_data_length)(input)?;
+
+        Ok((input, Self{error_correction_type, error_correction_data}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let error_correction_data_len: u32 = self.error_correction_data.len().try_into()?;

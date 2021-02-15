@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::le_u32;
+use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u32};
 
 
 #[derive(Debug, PartialEq)]
@@ -10,17 +10,15 @@ pub struct DigitalSignatureData<'a> {
 }
 
 impl<'a> DigitalSignatureData<'a> {
-    named!(pub parse<DigitalSignatureData>,
-        do_parse!(
-            signature_type: le_u32 >>
-            signature_data_size: le_u32 >>
-            signature_data: take!(signature_data_size) >>
-            (DigitalSignatureData{
-                signature_type,
-                signature_data,
-            })
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, signature_type) = le_u32(input)?;
+        let (input, signature_data_size) = le_u32(input)?;
+        let (input, signature_data) = take(signature_data_size)(input)?;
+        Ok((input, DigitalSignatureData{
+            signature_type,
+            signature_data,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let signature_data_len: u32 = self.signature_data.len().try_into()?;

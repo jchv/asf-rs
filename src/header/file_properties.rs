@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use uuid::Uuid;
-use nom::number::streaming::{le_u32, le_u64};
+use nom::{IResult, error::ParseError, number::streaming::{le_u32, le_u64}};
 
 use crate::guid::*;
 
@@ -21,35 +21,33 @@ pub struct FilePropertiesData {
 }
 
 impl FilePropertiesData {
-    named!(pub parse<Self>,
-        do_parse!(
-            file_id: guid >>
-            file_size: le_u64 >>
-            creation_date: le_u64 >>
-            data_packets_count: le_u64 >>
-            play_duration: le_u64 >>
-            send_duration: le_u64 >>
-            preroll: le_u64 >>
-            flags: le_u32 >>
-            minimum_data_packet_size: le_u32 >>
-            maximum_data_packet_size: le_u32 >>
-            maximum_bitrate: le_u32 >>
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, file_id) = guid(input)?;
+        let (input, file_size) = le_u64(input)?;
+        let (input, creation_date) = le_u64(input)?;
+        let (input, data_packets_count) = le_u64(input)?;
+        let (input, play_duration) = le_u64(input)?;
+        let (input, send_duration) = le_u64(input)?;
+        let (input, preroll) = le_u64(input)?;
+        let (input, flags) = le_u32(input)?;
+        let (input, minimum_data_packet_size) = le_u32(input)?;
+        let (input, maximum_data_packet_size) = le_u32(input)?;
+        let (input, maximum_bitrate) = le_u32(input)?;
 
-            (Self{
-                file_id,
-                file_size,
-                creation_date,
-                data_packets_count,
-                play_duration,
-                send_duration,
-                preroll,
-                flags,
-                minimum_data_packet_size,
-                maximum_data_packet_size,
-                maximum_bitrate,
-            })
-        )
-    );
+        Ok((input, Self{
+            file_id,
+            file_size,
+            creation_date,
+            data_packets_count,
+            play_duration,
+            send_duration,
+            preroll,
+            flags,
+            minimum_data_packet_size,
+            maximum_data_packet_size,
+            maximum_bitrate,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         w.write_all(&self.file_id.as_bytes_ms())?;

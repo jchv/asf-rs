@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::le_u16;
+use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u16};
 
 use crate::widestr::*;
 
@@ -15,29 +15,27 @@ pub struct ContentDescriptionData {
 }
 
 impl ContentDescriptionData {
-    named!(pub parse<Self>,
-        do_parse!(
-            title_len: le_u16 >>
-            author_len: le_u16 >>
-            copyright_len: le_u16 >>
-            description_len: le_u16 >>
-            rating_len: le_u16 >>
+    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, title_len) = le_u16(input)?;
+        let (input, author_len) = le_u16(input)?;
+        let (input, copyright_len) = le_u16(input)?;
+        let (input, description_len) = le_u16(input)?;
+        let (input, rating_len) = le_u16(input)?;
 
-            title: take!(title_len) >>
-            author: take!(author_len) >>
-            copyright: take!(copyright_len) >>
-            description: take!(description_len) >>
-            rating: take!(rating_len) >>
+        let (input, title) = take(title_len)(input)?;
+        let (input, author) = take(author_len)(input)?;
+        let (input, copyright) = take(copyright_len)(input)?;
+        let (input, description) = take(description_len)(input)?;
+        let (input, rating) = take(rating_len)(input)?;
 
-            (Self{
-                title: WideStr::parse(title)?.1,
-                author: WideStr::parse(author)?.1,
-                copyright: WideStr::parse(copyright)?.1,
-                description: WideStr::parse(description)?.1,
-                rating: WideStr::parse(rating)?.1,
-            })
-        )
-    );
+        Ok((input, Self{
+            title: WideStr::parse(title)?.1,
+            author: WideStr::parse(author)?.1,
+            copyright: WideStr::parse(copyright)?.1,
+            description: WideStr::parse(description)?.1,
+            rating: WideStr::parse(rating)?.1,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let title_len: u16 = self.title.size_of().try_into()?;
@@ -74,7 +72,7 @@ impl ContentDescriptionData {
 #[cfg(test)]
 mod tests {
     use crate::header::*;
-    use nom::{AsBytes, error::{Error, ErrorKind}};
+    use nom::{AsBytes, error::{Error, ErrorKind, VerboseError}};
 
     use super::*;
 
@@ -116,7 +114,7 @@ mod tests {
     #[test]
     fn parse_basic_content_descriptor() {
         assert_eq!(
-            HeaderObject::parse(BASIC_CONTENT_DESCRIPTOR_BYTES),
+            HeaderObject::parse::<VerboseError<_>>(BASIC_CONTENT_DESCRIPTOR_BYTES),
             Ok((&b""[..], HeaderObject::ContentDescription(ContentDescriptionData{
                 title: WideStr::new("The Matrix Part 2 of 2\0"),
                 author: WideStr::new("confuzed\0"),

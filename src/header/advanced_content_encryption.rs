@@ -1,7 +1,7 @@
 use std::{convert::TryInto, io::Write};
 
 use uuid::Uuid;
-use nom::number::streaming::{le_u16, le_u32};
+use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 
 use crate::guid::*;
 
@@ -26,17 +26,15 @@ pub struct AdvancedContentEncryptionData<'a> {
 }
 
 impl<'a> EncryptedObjectRecord<'a> {
-    named!(parse<EncryptedObjectRecord>,
-        do_parse!(
-            object_type: le_u16 >>
-            length: le_u16 >>
-            data: take!(length) >>
-            (EncryptedObjectRecord{
-                object_type,
-                data,
-            })
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, object_type) = le_u16(input)?;
+        let (input, length) = le_u16(input)?;
+        let (input, data) = take(length)(input)?;
+        Ok((input, Self{
+            object_type,
+            data,
+        }))
+    }
 
     fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let data_size: u32 = self.data.len().try_into()?;
@@ -52,21 +50,19 @@ impl<'a> EncryptedObjectRecord<'a> {
 }
 
 impl<'a> ContentEncryptionRecord<'a> {
-    named!(parse<ContentEncryptionRecord>,
-        do_parse!(
-            system_id: guid >>
-            system_version: le_u32 >>
-            encrypted_object_records: length_count!(le_u16, EncryptedObjectRecord::parse) >>
-            data_size: le_u32 >>
-            data: take!(data_size) >>
-            (ContentEncryptionRecord{
-                system_id,
-                system_version,
-                encrypted_object_records,
-                data,
-            })
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, system_id) = guid(input)?;
+        let (input, system_version) = le_u32(input)?;
+        let (input, encrypted_object_records) = length_count(le_u16, EncryptedObjectRecord::parse)(input)?;
+        let (input, data_size) = le_u32(input)?;
+        let (input, data) = take(data_size)(input)?;
+        Ok((input, Self{
+            system_id,
+            system_version,
+            encrypted_object_records,
+            data,
+        }))
+    }
 
     fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let encrypted_object_records_len: u16 = self.encrypted_object_records.len().try_into()?;
@@ -88,14 +84,12 @@ impl<'a> ContentEncryptionRecord<'a> {
 }
 
 impl<'a> AdvancedContentEncryptionData<'a> {
-    named!(pub parse<AdvancedContentEncryptionData>,
-        do_parse!(
-            content_encryption_records: length_count!(le_u16, ContentEncryptionRecord::parse) >>
-            (AdvancedContentEncryptionData{
-                content_encryption_records,
-            })
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, content_encryption_records) = length_count(le_u16, ContentEncryptionRecord::parse)(input)?;
+        Ok((input, Self{
+            content_encryption_records,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let content_encryption_records_len: u16 = self.content_encryption_records.len().try_into()?;

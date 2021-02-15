@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use nom::number::streaming::{le_u16, le_u32};
+use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 
 use crate::widestr::*;
 
@@ -20,24 +20,22 @@ pub struct MetadataLibraryData<'a> {
 }
 
 impl<'a> DescriptionRecord<'a> {
-    named!(pub parse<DescriptionRecord>,
-        do_parse!(
-            language_list_index: le_u16 >>
-            stream_number: le_u16 >>
-            name_length: le_u16 >>
-            data_type: le_u16 >>
-            data_length: le_u32 >>
-            name: take!(name_length) >>
-            data: take!(data_length) >>
-            (DescriptionRecord{
-                language_list_index,
-                stream_number,
-                data_type,
-                name: WideStr::parse(name)?.1,
-                data,
-            })
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, language_list_index) = le_u16(input)?;
+        let (input, stream_number) = le_u16(input)?;
+        let (input, name_length) = le_u16(input)?;
+        let (input, data_type) = le_u16(input)?;
+        let (input, data_length) = le_u32(input)?;
+        let (input, name) = take(name_length)(input)?;
+        let (input, data) = take(data_length)(input)?;
+        Ok((input, DescriptionRecord{
+            language_list_index,
+            stream_number,
+            data_type,
+            name: WideStr::parse(name)?.1,
+            data,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let name_len: u16 = self.name.size_of().try_into()?;
@@ -58,12 +56,10 @@ impl<'a> DescriptionRecord<'a> {
 }
 
 impl<'a> MetadataLibraryData<'a> {
-    named!(pub parse<MetadataLibraryData>,
-        do_parse!(
-            description_records: length_count!(le_u16, DescriptionRecord::parse) >>
-            (MetadataLibraryData{description_records})
-        )
-    );
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, description_records) = length_count(le_u16, DescriptionRecord::parse)(input)?;
+        Ok((input, MetadataLibraryData{description_records}))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let description_records_len: u16 = self.description_records.len().try_into()?;

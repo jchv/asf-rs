@@ -1,4 +1,4 @@
-use nom::number::streaming::le_u8;
+use nom::{IResult, bytes::streaming::take, combinator::map, error::ParseError};
 use uuid::Uuid;
 
 
@@ -16,15 +16,14 @@ impl AsBytesMs for Uuid {
     }
 }
 
-named!(pub guid<Uuid>,
-    do_parse!(
-        b: count!(le_u8, 16) >>
-        (Uuid::from_bytes([
+pub fn guid<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Uuid, E> {
+    map(take(16usize), |b: &'a[u8]| {
+        Uuid::from_bytes([
             b[3], b[2], b[1], b[0], b[5], b[4], b[7], b[6],
             b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15],
-        ]))
-    )
-);
+        ])            
+    })(input)
+}
 
 pub const HEADER_OBJECT: Uuid                                 = Uuid::from_u128(0x75b22630668e11cfa6d900aa0062ce6c);
 pub const DATA_OBJECT: Uuid                                   = Uuid::from_u128(0x75b22636668e11cfa6d900aa0062ce6c);
@@ -99,6 +98,8 @@ pub const PAYLOAD_EXTENSION_SYSTEM_ENCRYPTION_SAMPLE_ID: Uuid = Uuid::from_u128(
 
 #[cfg(test)]
 mod tests {
+    use nom::error::VerboseError;
+
     use crate::guid::HEADER_OBJECT;
 
     use super::*;
@@ -106,7 +107,7 @@ mod tests {
     #[test]
     fn guids() {
         assert_eq!(
-            guid(&[
+            guid::<'static, VerboseError<_>>(&[
                 0x30, 0x26, 0xb2, 0x75, 0x8e, 0x66, 0xcf, 0x11,
                 0xa6, 0xd9, 0x00, 0xaa, 0x00, 0x62, 0xce, 0x6c,
             ]),

@@ -1,7 +1,7 @@
 use std::{convert::TryInto, io::Write};
 
 use uuid::Uuid;
-use nom::number::streaming::{le_u16, le_u32, le_u64};
+use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::{le_u16, le_u32, le_u64}};
 
 use crate::guid::*;
 
@@ -18,29 +18,27 @@ pub struct StreamPropertiesData<'a> {
 }
 
 impl<'a> StreamPropertiesData<'a> {
-    named!(pub parse<StreamPropertiesData>,
-        do_parse!(
-            stream_type: guid >>
-            error_correction_type: guid >>
-            time_offset: le_u64 >>
-            type_specific_data_len: le_u32 >>
-            error_correction_data_len: le_u32 >>
-            flags: le_u16 >>
-            reserved: le_u32 >>
-            type_specific_data: take!(type_specific_data_len) >>
-            error_correction_data: take!(error_correction_data_len) >>
+    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+        let (input, stream_type) = guid(input)?;
+        let (input, error_correction_type) = guid(input)?;
+        let (input, time_offset) = le_u64(input)?;
+        let (input, type_specific_data_len) = le_u32(input)?;
+        let (input, error_correction_data_len) = le_u32(input)?;
+        let (input, flags) = le_u16(input)?;
+        let (input, reserved) = le_u32(input)?;
+        let (input, type_specific_data) = take(type_specific_data_len)(input)?;
+        let (input, error_correction_data) = take(error_correction_data_len)(input)?;
 
-            (StreamPropertiesData{
-                stream_type,
-                error_correction_type,
-                time_offset,
-                flags,
-                reserved,
-                type_specific_data,
-                error_correction_data,
-            })
-        )
-    );
+        Ok((input, Self{
+            stream_type,
+            error_correction_type,
+            time_offset,
+            flags,
+            reserved,
+            type_specific_data,
+            error_correction_data,
+        }))
+    }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let type_specific_data_len: u32 = self.type_specific_data.len().try_into()?;
@@ -64,7 +62,7 @@ impl<'a> StreamPropertiesData<'a> {
 
 #[cfg(test)]
 mod tests {
-    use nom::AsBytes;
+    use nom::{AsBytes, error::VerboseError};
 
     use crate::header::*;
 
@@ -105,7 +103,7 @@ mod tests {
     #[test]
     fn parse_basic_stream_properties() {
         assert_eq!(
-            HeaderObject::parse(BASIC_STREAM_PROPERTIES_BYTES),
+            HeaderObject::parse::<VerboseError<_>>(BASIC_STREAM_PROPERTIES_BYTES),
             Ok((&b""[..], HeaderObject::StreamProperties(BASIC_STREAM_PROPERTIES_DATA))),
         );
     }
