@@ -3,7 +3,7 @@ use crate::{data::DataObject, header::HeaderObjects, index::IndexObjects};
 #[derive(Debug, PartialEq)]
 pub struct Container<'a> {
     pub header: HeaderObjects<'a>,
-    pub data: DataObject,
+    pub data: DataObject<'a>,
     pub indices: IndexObjects,
 }
 
@@ -28,5 +28,10 @@ mod tests {
     fn basic_wmv() {
         let (remaining, _data) = Container::parse(&BASIC_WMV).expect("to parse successfully");
         assert_eq!(remaining.len(), 0);
+    }
+
+    #[test]
+    fn basic_wmv_print() {
+        println!("Dump: {:?}", Container::parse(&BASIC_WMV).expect("to parse successfully").1);
     }
 }

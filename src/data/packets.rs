@@ -1,4 +1,4 @@
-use nom::{bytes::streaming::take, combinator::{complete, rest}, multi::count};
+use nom::{InputLength, bytes::streaming::take, combinator::{complete, rest}, multi::count};
 use nom::{IResult, bits::bits, combinator::{map, peek}, multi::many0, number::streaming::{le_u8, le_u16, le_u32}};
 use nom::bits::streaming::take as take_bits;
 
@@ -210,10 +210,14 @@ impl<'a> DataPacket<'a> {
         let (input, error_correction_present) = map(peek(le_u8), |x| x & 0x80 != 0)(input)?;
         let (input, error_correction_data) = nom::combinator::cond(error_correction_present, ErrorCorrectionData::parse)(input)?;
         let (input, payload_parsing_data) = PayloadParsingData::parse(input)?;
-        let (input, raw_payload_data) = take(payload_parsing_data.packet_length - payload_parsing_data.padding_len)(input)?;
+        let (input, raw_payload_data) = if payload_parsing_data.packet_length == 0 {
+            take(input.input_len() as u32 - payload_parsing_data.padding_len)(input)?
+        } else {
+            take(payload_parsing_data.packet_length - payload_parsing_data.padding_len)(input)?
+        };
         let (input, _) = take(payload_parsing_data.padding_len)(input)?;
         let payload_parser = PayloadData::parser(payload_parsing_data.length_type_flags.multiple_payloads_present, payload_parsing_data.property_flags);
-        let payload = complete(payload_parser)(raw_payload_data)?.1;
+        let payload = payload_parser(raw_payload_data)?.1;
         Ok((input, DataPacket{
             error_correction_data,
             payload_parsing_data,
