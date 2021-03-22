@@ -119,9 +119,9 @@ pub enum PayloadData<'a> {
 }
 
 impl MultiplePayloadsFlag {
-    pub fn parse<'a>(
-        data: (Span<'a>, usize),
-    ) -> IResult<(Span<'a>, usize), MultiplePayloadsFlag, Error<(Span<'a>, usize)>> {
+    pub fn parse(
+        data: (Span, usize),
+    ) -> IResult<(Span, usize), MultiplePayloadsFlag, Error<(Span, usize)>> {
         context(
             "MultiplePayloadsFlag",
             alt((
@@ -133,9 +133,9 @@ impl MultiplePayloadsFlag {
 }
 
 impl ErrorCorrectionFlag {
-    pub fn parse<'a>(
-        data: (Span<'a>, usize),
-    ) -> IResult<(Span<'a>, usize), ErrorCorrectionFlag, Error<(Span<'a>, usize)>> {
+    pub fn parse(
+        data: (Span, usize),
+    ) -> IResult<(Span, usize), ErrorCorrectionFlag, Error<(Span, usize)>> {
         context(
             "ErrorCorrectionFlag",
             nom::combinator::map(nom::bits::complete::take(1usize), |x: u8| match x == 1 {
@@ -147,9 +147,9 @@ impl ErrorCorrectionFlag {
 }
 
 impl FieldType {
-    pub fn parse<'a>(
-        input: (Span<'a>, usize),
-    ) -> IResult<(Span<'a>, usize), Self, Error<(Span<'a>, usize)>> {
+    pub fn parse(
+        input: (Span, usize),
+    ) -> IResult<(Span, usize), Self, Error<(Span, usize)>> {
         context(
             "FieldType",
             nom::combinator::map(nom::bits::complete::take(2usize), |x: u8| match x {
@@ -206,7 +206,7 @@ impl PropertyFlags {
             let (input, media_object_number_len_type) = FieldType::parse(input)?;
             let (input, offset_into_media_object_len_type) = FieldType::parse(input)?;
             let (input, replicated_data_len_type) = FieldType::parse(input)?;
-            return Ok((
+            Ok((
                 input,
                 Self {
                     replicated_data_len_type,
@@ -214,7 +214,7 @@ impl PropertyFlags {
                     media_object_number_len_type,
                     stream_number_len_type,
                 },
-            ));
+            ))
         })(input)
     }
 }
@@ -226,13 +226,13 @@ impl PayloadFlags {
         context("PayloadFlags", move |input: (Span<'a>, usize)| {
             let (input, payload_len_type) = FieldType::parse(input)?;
             let (input, number_of_payloads) = take_bits(6usize)(input)?;
-            return Ok((
+            Ok((
                 input,
                 Self {
                     number_of_payloads,
                     payload_len_type,
                 },
-            ));
+            ))
         })(input)
     }
 }
@@ -244,13 +244,13 @@ impl StreamFlags {
         context("StreamFlags", move |input: (Span<'a>, usize)| {
             let (input, key_frame) = map(take_bits(1usize), |x: u8| x == 1)(input)?;
             let (input, stream_number) = take_bits(7usize)(input)?;
-            return Ok((
+            Ok((
                 input,
                 Self {
                     stream_number,
                     key_frame,
                 },
-            ));
+            ))
         })(input)
     }
 }
@@ -347,10 +347,10 @@ impl<'a> PayloadData<'a> {
     ) -> impl Fn(Span<'a>) -> IResult<Span<'a>, PayloadData<'a>, Error<Span<'a>>> {
         move |input: Span| match multiple {
             MultiplePayloadsFlag::SinglePayload => {
-                Self::parser_single(property_flags.clone())(input)
+                Self::parser_single(property_flags)(input)
             }
             MultiplePayloadsFlag::MultiplePayloads => {
-                Self::parser_multi(property_flags.clone())(input)
+                Self::parser_multi(property_flags)(input)
             }
         }
     }
@@ -369,7 +369,7 @@ impl<'a> PayloadData<'a> {
         move |input: Span| {
             let (input, payload_flags) = bits(PayloadFlags::parse)(input)?;
             let (input, payloads) = count(
-                Payload::parser(property_flags.clone(), Some(payload_flags.payload_len_type)),
+                Payload::parser(property_flags, Some(payload_flags.payload_len_type)),
                 payload_flags.number_of_payloads.into(),
             )(input)?;
             Ok((input, PayloadData::MultiplePayloads(payloads)))

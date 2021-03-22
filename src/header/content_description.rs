@@ -103,7 +103,7 @@ mod tests {
                 code: ErrorKind::Eof,
                 ..
             }) => {}
-            _ => panic!(format!("expected eof error, got {:?}", err)),
+            _ => panic!("expected eof error, got {:?}", err),
         }
     }
 

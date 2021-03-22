@@ -25,7 +25,7 @@ impl WideStr {
     }
 
     pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
-        map(terminated(many0(complete(le_u16)), eof), |x| WideStr(x))(input)
+        map(terminated(many0(complete(le_u16)), eof), WideStr)(input)
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -50,7 +50,7 @@ impl WideStr {
     pub fn parse_count16<'a, E: ParseError<Span<'a>>>(
         input: Span<'a>,
     ) -> IResult<Span<'a>, Self, E> {
-        map(length_count(le_u16, le_u16), |x| WideStr(x))(input)
+        map(length_count(le_u16, le_u16), WideStr)(input)
     }
 
     pub fn write_count16<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -69,7 +69,7 @@ impl WideStr {
     pub fn parse_count32<'a, E: ParseError<Span<'a>>>(
         input: Span<'a>,
     ) -> IResult<Span<'a>, Self, E> {
-        map(length_count(le_u32, le_u16), |x| WideStr(x))(input)
+        map(length_count(le_u32, le_u16), WideStr)(input)
     }
 
     pub fn write_count32<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
