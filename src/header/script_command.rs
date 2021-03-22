@@ -3,7 +3,7 @@ use std::{convert::TryInto, io::Write};
 use uuid::Uuid;
 use nom::{IResult, error::ParseError, multi::count, number::streaming::{le_u16, le_u32}};
 
-use crate::{guid::*, widestr::*};
+use crate::{guid::*, span::Span, widestr::*};
 
 
 #[derive(Debug, PartialEq)]
@@ -21,7 +21,7 @@ pub struct ScriptCommandData {
 }
 
 impl Command {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, presentation_time) = le_u32(input)?;
         let (input, type_index) = le_u16(input)?;
         let (input, command_name) = WideStr::parse_count16(input)?;
@@ -41,7 +41,7 @@ impl Command {
 }
 
 impl ScriptCommandData {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, reserved) = guid(input)?;
         let (input, commands_count) = le_u16(input)?;
         let (input, command_types_count) = le_u16(input)?;

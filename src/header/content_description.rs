@@ -2,7 +2,7 @@ use std::{convert::TryInto, io::Write};
 
 use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u16};
 
-use crate::widestr::*;
+use crate::{span::Span, widestr::*};
 
 
 #[derive(Debug, PartialEq)]
@@ -15,7 +15,7 @@ pub struct ContentDescriptionData {
 }
 
 impl ContentDescriptionData {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, title_len) = le_u16(input)?;
         let (input, author_len) = le_u16(input)?;
         let (input, copyright_len) = le_u16(input)?;
@@ -78,7 +78,7 @@ mod tests {
 
     #[test]
     fn broken_content_descriptor() {
-        let err = HeaderObject::parse(&[
+        let err = HeaderObject::parse(Span::new(&[
             0x33, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11, 0xA6, 0xD9,
             0x00, 0xAA, 0x00, 0x62, 0xCE, 0x6C, 0x67, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x2E, 0x00, 0x11, 0x00, 0x02, 0x00,
@@ -90,7 +90,7 @@ mod tests {
             0x63, 0x00, 0x6F, 0x00, 0x6E, 0x00, 0x66, 0x00, 0x75, 0x00,
             0x7A, 0x00, 0x65, 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00,
-        ]).expect_err("expected failure on broken header");
+        ])).expect_err("expected failure on broken header");
         match err {
             nom::Err::Error(Error{code: ErrorKind::Eof, ..}) => {}
             _ => panic!(format!("expected eof error, got {:?}", err))
@@ -114,14 +114,14 @@ mod tests {
     #[test]
     fn parse_basic_content_descriptor() {
         assert_eq!(
-            HeaderObject::parse::<VerboseError<_>>(BASIC_CONTENT_DESCRIPTOR_BYTES),
-            Ok((&b""[..], HeaderObject::ContentDescription(ContentDescriptionData{
+            HeaderObject::parse::<VerboseError<_>>(Span::new(BASIC_CONTENT_DESCRIPTOR_BYTES)).expect("parse error").1,
+            HeaderObject::ContentDescription(ContentDescriptionData{
                 title: WideStr::new("The Matrix Part 2 of 2\0"),
                 author: WideStr::new("confuzed\0"),
                 copyright: WideStr::new("\0"),
                 description: WideStr::new("\0"),
                 rating: WideStr::new("\0"),
-            })))
+            })
         )
     }
 

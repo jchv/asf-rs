@@ -2,6 +2,8 @@ use std::{convert::TryInto, io::Write};
 
 use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 
+use crate::span::Span;
+
 
 #[derive(Debug, PartialEq)]
 pub struct BitrateRecord {
@@ -15,7 +17,7 @@ pub struct StreamBitratePropertiesData {
 }
 
 impl BitrateRecord {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, flags) = le_u16(input)?;
         let (input, average_bitrate) = le_u32(input)?;
         Ok((input, Self{flags, average_bitrate}))
@@ -33,7 +35,7 @@ impl BitrateRecord {
 }
 
 impl StreamBitratePropertiesData {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, bitrate_records) = length_count(le_u16, BitrateRecord::parse)(input)?;
         Ok((input, Self{bitrate_records}))
     }

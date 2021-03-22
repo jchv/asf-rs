@@ -3,7 +3,7 @@ use std::io::Write;
 use uuid::Uuid;
 use nom::{IResult, error::ParseError, number::streaming::{le_u32, le_u64}};
 
-use crate::guid::*;
+use crate::{guid::*, span::Span};
 
 #[derive(Debug, PartialEq)]
 pub struct FilePropertiesData {
@@ -21,7 +21,7 @@ pub struct FilePropertiesData {
 }
 
 impl FilePropertiesData {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, file_id) = guid(input)?;
         let (input, file_size) = le_u64(input)?;
         let (input, creation_date) = le_u64(input)?;

@@ -3,7 +3,7 @@ use std::{convert::TryInto, io::Write};
 use uuid::Uuid;
 use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 
-use crate::{guid::*, widestr::*};
+use crate::{guid::*, span::Span, widestr::*};
 
 
 #[derive(Debug, PartialEq)]
@@ -11,7 +11,7 @@ pub struct CodecEntry<'a> {
     pub codec_type: u16,
     pub codec_name: WideStr,
     pub codec_description: WideStr,
-    pub codec_information: &'a [u8],
+    pub codec_information: Span<'a>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -21,7 +21,7 @@ pub struct CodecListData<'a> {
 }
 
 impl<'a> CodecEntry<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, codec_type) = le_u16(input)?;
         let (input, codec_name) = WideStr::parse_count16(input)?;
         let (input, codec_description) = WideStr::parse_count16(input)?;
@@ -36,7 +36,7 @@ impl<'a> CodecEntry<'a> {
         self.codec_name.write_count16(w)?;
         self.codec_description.write_count16(w)?;
         w.write_all(&codec_information_len.to_le_bytes())?;
-        w.write_all(self.codec_information)?;
+        w.write_all(&self.codec_information)?;
         Ok(())
     }
 
@@ -46,7 +46,7 @@ impl<'a> CodecEntry<'a> {
 }
 
 impl<'a> CodecListData<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, reserved) = guid(input)?;
         let (input, codec_entries) = length_count(le_u32, CodecEntry::parse)(input)?;
         Ok((input, Self{reserved, codec_entries}))

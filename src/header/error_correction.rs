@@ -3,17 +3,17 @@ use std::{convert::TryInto, io::Write};
 use uuid::Uuid;
 use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u32};
 
-use crate::guid::*;
+use crate::{guid::*, span::Span};
 
 
 #[derive(Debug, PartialEq)]
 pub struct ErrorCorrectionData<'a> {
     pub error_correction_type: Uuid,
-    pub error_correction_data: &'a [u8],
+    pub error_correction_data: Span<'a>,
 }
 
 impl<'a> ErrorCorrectionData<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, error_correction_type) = guid(input)?;
         let (input, error_correction_data_length) = le_u32(input)?;
         let (input, error_correction_data) = take(error_correction_data_length)(input)?;
@@ -25,7 +25,7 @@ impl<'a> ErrorCorrectionData<'a> {
         let error_correction_data_len: u32 = self.error_correction_data.len().try_into()?;
         w.write_all(&self.error_correction_type.as_bytes_ms())?;
         w.write_all(&error_correction_data_len.to_le_bytes())?;
-        w.write_all(self.error_correction_data)?;
+        w.write_all(&self.error_correction_data)?;
         Ok(())
     }
 

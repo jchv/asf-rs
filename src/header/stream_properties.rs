@@ -3,7 +3,7 @@ use std::{convert::TryInto, io::Write};
 use uuid::Uuid;
 use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::{le_u16, le_u32, le_u64}};
 
-use crate::guid::*;
+use crate::{guid::*, span::Span};
 
 
 #[derive(Debug, PartialEq)]
@@ -13,12 +13,12 @@ pub struct StreamPropertiesData<'a> {
     pub time_offset: u64,
     pub flags: u16,
     pub reserved: u32,
-    pub type_specific_data: &'a [u8],
-    pub error_correction_data: &'a [u8],
+    pub type_specific_data: Span<'a>,
+    pub error_correction_data: Span<'a>,
 }
 
 impl<'a> StreamPropertiesData<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, stream_type) = guid(input)?;
         let (input, error_correction_type) = guid(input)?;
         let (input, time_offset) = le_u64(input)?;
@@ -50,8 +50,8 @@ impl<'a> StreamPropertiesData<'a> {
         w.write_all(&error_correction_data_len.to_le_bytes())?;
         w.write_all(&self.flags.to_le_bytes())?;
         w.write_all(&self.reserved.to_le_bytes())?;
-        w.write_all(self.type_specific_data)?;
-        w.write_all(self.error_correction_data)?;
+        w.write_all(&self.type_specific_data)?;
+        w.write_all(&self.error_correction_data)?;
         Ok(())
     }
 
@@ -62,7 +62,7 @@ impl<'a> StreamPropertiesData<'a> {
 
 #[cfg(test)]
 mod tests {
-    use nom::{AsBytes, error::VerboseError};
+    use nom::{AsBytes, Slice, error::VerboseError};
 
     use crate::header::*;
 
@@ -83,28 +83,24 @@ mod tests {
         0x02, 0x01, 0x00, 0x00,
     ];
 
-    const BASIC_STREAM_PROPERTIES_DATA: StreamPropertiesData = StreamPropertiesData{
-        stream_type: AUDIO_MEDIA,
-        error_correction_type: AUDIO_SPREAD,
-        time_offset: 0,
-        flags: 1,
-        reserved: 7811952,
-        type_specific_data: &[
-            0x61, 0x01, 0x01, 0x00, 0x80, 0x3E, 0x00, 0x00,
-            0xD0, 0x07, 0x00, 0x00, 0x80, 0x02, 0x10, 0x00,
-            0x0A, 0x00, 0x00, 0x22, 0x00, 0x00, 0x0E, 0x00,
-            0x80, 0x07, 0x00, 0x00,
-        ],
-        error_correction_data: &[
-            0x01, 0x80, 0x02, 0x80, 0x02, 0x01, 0x00, 0x00,
-        ],
-    };
+    fn basic_stream_properties_data() -> StreamPropertiesData<'static> {
+        let span = Span::new(BASIC_STREAM_PROPERTIES_BYTES);
+        StreamPropertiesData{
+            stream_type: AUDIO_MEDIA,
+            error_correction_type: AUDIO_SPREAD,
+            time_offset: 0,
+            flags: 1,
+            reserved: 7811952,
+            type_specific_data: span.slice(78..106),
+            error_correction_data: span.slice(106..),
+        }
+    }
 
     #[test]
     fn parse_basic_stream_properties() {
         assert_eq!(
-            HeaderObject::parse::<VerboseError<_>>(BASIC_STREAM_PROPERTIES_BYTES),
-            Ok((&b""[..], HeaderObject::StreamProperties(BASIC_STREAM_PROPERTIES_DATA))),
+            HeaderObject::parse::<VerboseError<_>>(Span::new(BASIC_STREAM_PROPERTIES_BYTES)).expect("parse error").1,
+            HeaderObject::StreamProperties(basic_stream_properties_data()),
         );
     }
 
@@ -112,7 +108,7 @@ mod tests {
     fn write_basic_stream_properties() {
         let mut buf = Vec::new();
 
-        HeaderObject::StreamProperties(BASIC_STREAM_PROPERTIES_DATA).write(&mut buf).expect("write to succeed");
+        HeaderObject::StreamProperties(basic_stream_properties_data()).write(&mut buf).expect("write to succeed");
 
         assert_eq!(buf.as_bytes(), &BASIC_STREAM_PROPERTIES_BYTES[..])
     }
@@ -120,7 +116,7 @@ mod tests {
     #[test]
     fn size_of_basic_stream_properties() {
         assert_eq!(
-            HeaderObject::StreamProperties(BASIC_STREAM_PROPERTIES_DATA).size_of(),
+            HeaderObject::StreamProperties(basic_stream_properties_data()).size_of(),
             BASIC_STREAM_PROPERTIES_BYTES.len()
         )
     }

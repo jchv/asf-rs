@@ -2,6 +2,8 @@ use std::{convert::TryInto, io::Write};
 
 use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 
+use crate::span::Span;
+
 
 #[derive(Debug, PartialEq)]
 pub struct IndexSpecifier {
@@ -16,7 +18,7 @@ pub struct IndexParametersData {
 }
 
 impl IndexSpecifier {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, stream_number) = le_u16(input)?;
         let (input, index_type) = le_u16(input)?;
         Ok((input, Self{
@@ -37,7 +39,7 @@ impl IndexSpecifier {
 }
 
 impl IndexParametersData {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, index_entry_time_interval) = le_u32(input)?;
         let (input, index_specifiers) = length_count(le_u16, IndexSpecifier::parse)(input)?;
         Ok((input, Self{

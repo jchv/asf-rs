@@ -3,7 +3,7 @@ use std::{convert::TryInto, io::Write};
 use uuid::Uuid;
 use nom::{IResult, bytes::streaming::take, combinator::complete, error::ParseError, multi::many0, number::streaming::{le_u16, le_u32}};
 
-use crate::{guid::*, object::*};
+use crate::{guid::*, object::*, span::Span};
 
 use super::advanced_content_encryption::AdvancedContentEncryptionData;
 use super::advanced_mutual_exclusion::AdvancedMutualExclusionData;
@@ -38,7 +38,7 @@ pub enum ExtensionHeaderObject<'a> {
 }
 
 impl<'a> ExtensionHeaderObject<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, obj) = object(input)?;
         Ok((input, match obj {
             Object{guid: EXTENDED_STREAM_PROPERTIES_OBJECT, data} =>
@@ -71,7 +71,7 @@ impl<'a> ExtensionHeaderObject<'a> {
         }))
     }
 
-    pub fn parse_many<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Vec<Self>, E> {
+    pub fn parse_many<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Vec<Self>, E> {
         many0(complete(Self::parse))(input)
     }
 
@@ -159,7 +159,7 @@ impl<'a> ExtensionHeaderObject<'a> {
                 let data_len: u64 = unk.data.len().try_into()?;
                 w.write_all(&unk.guid.as_bytes_ms())?;
                 w.write_all(&data_len.to_le_bytes())?;
-                w.write_all(unk.data)?;
+                w.write_all(&unk.data)?;
             }
         }
         Ok(())
@@ -194,7 +194,7 @@ pub struct HeaderExtensionData<'a> {
 }
 
 impl<'a> HeaderExtensionData<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, reserved_1) = guid(input)?;
         let (input, reserved_2) = le_u16(input)?;
         let (input, extension_data_size) = le_u32(input)?;

@@ -2,6 +2,8 @@ use std::io::Write;
 
 use nom::{IResult, error::ParseError, number::streaming::le_u8};
 
+use crate::span::Span;
+
 
 #[derive(Debug, PartialEq)]
 pub struct CompatibilityData {
@@ -10,7 +12,7 @@ pub struct CompatibilityData {
 }
 
 impl CompatibilityData {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, profile) = le_u8(input)?;
         let (input, mode) = le_u8(input)?;
         Ok((input, Self{

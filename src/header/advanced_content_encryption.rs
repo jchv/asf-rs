@@ -3,13 +3,13 @@ use std::{convert::TryInto, io::Write};
 use uuid::Uuid;
 use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 
-use crate::guid::*;
+use crate::{guid::*, span::Span};
 
 
 #[derive(Debug, PartialEq)]
 pub struct EncryptedObjectRecord<'a> {
     pub object_type: u16,
-    pub data: &'a [u8],
+    pub data: Span<'a>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -17,7 +17,7 @@ pub struct ContentEncryptionRecord<'a> {
     pub system_id: Uuid,
     pub system_version: u32,
     pub encrypted_object_records: Vec<EncryptedObjectRecord<'a>>,
-    pub data: &'a [u8],
+    pub data: Span<'a>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -26,7 +26,7 @@ pub struct AdvancedContentEncryptionData<'a> {
 }
 
 impl<'a> EncryptedObjectRecord<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, object_type) = le_u16(input)?;
         let (input, length) = le_u16(input)?;
         let (input, data) = take(length)(input)?;
@@ -40,7 +40,7 @@ impl<'a> EncryptedObjectRecord<'a> {
         let data_size: u32 = self.data.len().try_into()?;
         w.write_all(&self.object_type.to_le_bytes())?;
         w.write_all(&data_size.to_le_bytes())?;
-        w.write_all(self.data)?;
+        w.write_all(&self.data)?;
         Ok(())
     }
 
@@ -50,7 +50,7 @@ impl<'a> EncryptedObjectRecord<'a> {
 }
 
 impl<'a> ContentEncryptionRecord<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, system_id) = guid(input)?;
         let (input, system_version) = le_u32(input)?;
         let (input, encrypted_object_records) = length_count(le_u16, EncryptedObjectRecord::parse)(input)?;
@@ -74,7 +74,7 @@ impl<'a> ContentEncryptionRecord<'a> {
             record.write(w)?;
         }
         w.write_all(&data_size.to_le_bytes())?;
-        w.write_all(self.data)?;
+        w.write_all(&self.data)?;
         Ok(())
     }
 
@@ -84,7 +84,7 @@ impl<'a> ContentEncryptionRecord<'a> {
 }
 
 impl<'a> AdvancedContentEncryptionData<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, content_encryption_records) = length_count(le_u16, ContentEncryptionRecord::parse)(input)?;
         Ok((input, Self{
             content_encryption_records,

@@ -2,14 +2,14 @@ use std::{convert::TryInto, io::Write};
 
 use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::le_u16};
 
-use crate::widestr::*;
+use crate::{span::Span, widestr::*};
 
 
 #[derive(Debug, PartialEq)]
 pub struct ContentDescriptor<'a> {
     pub name: WideStr,
     pub value_type: u16,
-    pub value: &'a [u8],
+    pub value: Span<'a>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -18,7 +18,7 @@ pub struct ExtendedContentDescriptionData<'a> {
 }
 
 impl<'a> ContentDescriptor<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, name) = WideStr::parse_count16(input)?;
         let (input, value_type) = le_u16(input)?;
         let (input, value_len) = le_u16(input)?;
@@ -31,7 +31,7 @@ impl<'a> ContentDescriptor<'a> {
         self.name.write_count16(w)?;
         w.write_all(&self.value_type.to_le_bytes())?;
         w.write_all(&value_len.to_le_bytes())?;
-        w.write_all(self.value)?;
+        w.write_all(&self.value)?;
         Ok(())
     }
 
@@ -41,7 +41,7 @@ impl<'a> ContentDescriptor<'a> {
 }
 
 impl<'a> ExtendedContentDescriptionData<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, descriptors) = length_count(le_u16, ContentDescriptor::parse)(input)?;
         Ok((input, Self{descriptors}))
     }

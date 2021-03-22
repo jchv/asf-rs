@@ -5,7 +5,7 @@ use nom::{IResult, bytes::streaming::{tag, take}, multi::count, number::streamin
 use packets::DataPacket;
 use uuid::Uuid;
 
-use crate::{error::Error, guid::*};
+use crate::{error::Error, guid::*, span::Span};
 
 #[derive(Debug, PartialEq)]
 pub struct DataObject<'a> {
@@ -16,8 +16,8 @@ pub struct DataObject<'a> {
 }
 
 impl<'a> DataObject<'a> {
-    pub fn parse(input: &'a[u8]) -> IResult<&'a[u8], DataObject, Error<&'a[u8]>> {
-        context("DataObject", move |input: &'a[u8]| {
+    pub fn parse(input: Span<'a>) -> IResult<Span<'a>, DataObject, Error<Span<'a>>> {
+        context("DataObject", move |input: Span<'a>| {
             let (input, _data_object_guid) = tag(DATA_OBJECT.as_bytes_ms())(input)?;
             let (input, size) = le_u64(input)?;
             let (input, file_id) = guid(input)?;

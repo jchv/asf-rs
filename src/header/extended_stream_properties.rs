@@ -3,7 +3,7 @@ use std::{convert::TryInto, io::Write};
 use nom::{IResult, bytes::streaming::take, combinator::opt, error::ParseError, multi::count, number::streaming::{le_u16, le_u32, le_u64}};
 use uuid::Uuid;
 
-use crate::{guid::*, object::*, widestr::*};
+use crate::{guid::*, object::*, span::Span, widestr::*};
 
 use super::stream_properties::*;
 
@@ -17,7 +17,7 @@ pub struct StreamName {
 pub struct PayloadExtensionSystem<'a> {
     pub id: Uuid,
     pub data_size: u16,
-    pub info: &'a [u8],
+    pub info: Span<'a>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -41,7 +41,7 @@ pub struct ExtendedStreamPropertiesData<'a> {
 }
 
 impl StreamName {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, language_id_index) = le_u16(input)?;
         let (input, stream_name_length) = le_u16(input)?;
         let (input, stream_name) = take(stream_name_length)(input)?;
@@ -65,7 +65,7 @@ impl StreamName {
 }
 
 impl<'a> PayloadExtensionSystem<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, id) = guid(input)?;
         let (input, data_size) = le_u16(input)?;
         let (input, info_length) = le_u32(input)?;
@@ -82,7 +82,7 @@ impl<'a> PayloadExtensionSystem<'a> {
         w.write_all(&self.id.as_bytes_ms())?;
         w.write_all(&self.data_size.to_le_bytes())?;
         w.write_all(&info_len.to_le_bytes())?;
-        w.write_all(self.info)?;
+        w.write_all(&self.info)?;
         Ok(())
     }
 
@@ -92,7 +92,7 @@ impl<'a> PayloadExtensionSystem<'a> {
 }
 
 impl<'a> ExtendedStreamPropertiesData<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, start_time) = le_u64(input)?;
         let (input, end_time) = le_u64(input)?;
         let (input, data_bitrate) = le_u32(input)?;

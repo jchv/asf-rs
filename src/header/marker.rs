@@ -3,7 +3,7 @@ use std::{convert::TryInto, io::Write};
 use uuid::Uuid;
 use nom::{IResult, error::ParseError, multi::count, number::streaming::{le_u16, le_u32, le_u64}};
 
-use crate::{guid::*, widestr::*};
+use crate::{guid::*, span::Span, widestr::*};
 
 
 #[derive(Debug, PartialEq)]
@@ -25,7 +25,7 @@ pub struct MarkerData {
 }
 
 impl Marker {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, offset) = le_u64(input)?;
         let (input, presentation_time) = le_u64(input)?;
         let (input, entry_length) = le_u16(input)?;
@@ -51,7 +51,7 @@ impl Marker {
 }
 
 impl MarkerData {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, reserved_1) = guid(input)?;
         let (input, markers_count) = le_u32(input)?;
         let (input, reserved_2) = le_u16(input)?;

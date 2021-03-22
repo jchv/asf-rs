@@ -2,7 +2,7 @@ use std::{convert::TryInto, io::Write};
 
 use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u8, le_u16}};
 
-use crate::widestr::*;
+use crate::{span::Span, widestr::*};
 
 
 #[derive(Debug, PartialEq)]
@@ -11,13 +11,13 @@ pub struct LanguageListData {
 }
 
 impl LanguageListData {
-    fn parse_id<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], WideStr, E> {
+    fn parse_id<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, WideStr, E> {
         let (input, length) = le_u8(input)?;
         let (input, data) = take(length)(input)?;
         Ok((input, WideStr::parse(data)?.1))
     }
     
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, language_id_records) = length_count(le_u16, Self::parse_id)(input)?;
         Ok((input, Self{language_id_records}))
     }

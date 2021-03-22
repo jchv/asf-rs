@@ -3,7 +3,7 @@ use std::{convert::TryInto, io::Write};
 use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 use uuid::Uuid;
 
-use crate::guid::*;
+use crate::{guid::*, span::Span};
 
 
 #[derive(Debug, PartialEq)]
@@ -15,7 +15,7 @@ pub struct BandwidthSharingData {
 }
 
 impl BandwidthSharingData {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, sharing_type) = guid(input)?;
         let (input, data_bitrate) = le_u32(input)?;
         let (input, buffer_size) = le_u32(input)?;

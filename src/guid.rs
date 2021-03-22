@@ -1,4 +1,4 @@
-use nom::{IResult, bytes::streaming::take, combinator::map, error::ParseError};
+use nom::{AsBytes, IResult, InputIter, InputLength, InputTake, bytes::streaming::take, combinator::map, error::ParseError};
 use uuid::Uuid;
 
 
@@ -16,8 +16,13 @@ impl AsBytesMs for Uuid {
     }
 }
 
-pub fn guid<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Uuid, E> {
-    map(take(16usize), |b: &'a[u8]| {
+pub fn guid<I, E>(input: I) -> IResult<I, Uuid, E>
+where
+    I: InputLength + InputTake + InputIter + AsBytes,
+    E: ParseError<I>,
+{
+    map(take(16usize), |i: I| {
+        let b = i.as_bytes();
         Uuid::from_bytes([
             b[3], b[2], b[1], b[0], b[5], b[4], b[7], b[6],
             b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15],
@@ -107,7 +112,7 @@ mod tests {
     #[test]
     fn guids() {
         assert_eq!(
-            guid::<'static, VerboseError<_>>(&[
+            guid::<&'static [u8], VerboseError<_>>(&[
                 0x30, 0x26, 0xb2, 0x75, 0x8e, 0x66, 0xcf, 0x11,
                 0xa6, 0xd9, 0x00, 0xaa, 0x00, 0x62, 0xce, 0x6c,
             ]),

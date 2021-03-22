@@ -3,7 +3,7 @@ use nom::{IResult, bits::bits, combinator::{map, peek}, multi::many0, number::st
 use nom::bits::streaming::take as take_bits;
 use nom::bits::streaming::tag as tag_bits;
 
-use crate::{combinators::length_take, error::Error};
+use crate::{combinators::{length_take, span_bytes}, error::Error, span::Span};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MultiplePayloadsFlag {
@@ -104,7 +104,7 @@ pub enum PayloadData<'a> {
 }
 
 impl MultiplePayloadsFlag {
-    pub fn parse<'a>(data: (&'a[u8], usize)) -> IResult<(&'a[u8], usize), MultiplePayloadsFlag, Error<(&'a[u8], usize)>> {
+    pub fn parse<'a>(data: (Span<'a>, usize)) -> IResult<(Span<'a>, usize), MultiplePayloadsFlag, Error<(Span<'a>, usize)>> {
         context("MultiplePayloadsFlag", alt((
             value(MultiplePayloadsFlag::SinglePayload, tag_bits(0, 1usize)),
             value(MultiplePayloadsFlag::MultiplePayloads, tag_bits(1, 1usize)),
@@ -113,7 +113,7 @@ impl MultiplePayloadsFlag {
 }
 
 impl ErrorCorrectionFlag {
-    pub fn parse<'a>(data: (&'a[u8], usize)) -> IResult<(&'a[u8], usize), ErrorCorrectionFlag, Error<(&'a[u8], usize)>> {
+    pub fn parse<'a>(data: (Span<'a>, usize)) -> IResult<(Span<'a>, usize), ErrorCorrectionFlag, Error<(Span<'a>, usize)>> {
         context("ErrorCorrectionFlag", nom::combinator::map(
             nom::bits::complete::take(1usize),
             |x: u8| match x == 1 {
@@ -125,7 +125,7 @@ impl ErrorCorrectionFlag {
 }
 
 impl FieldType {
-    pub fn parse<'a>(input: (&'a [u8], usize)) -> IResult<(&'a [u8], usize), Self, Error<(&'a[u8], usize)>> {
+    pub fn parse<'a>(input: (Span<'a>, usize)) -> IResult<(Span<'a>, usize), Self, Error<(Span<'a>, usize)>> {
         context("FieldType", nom::combinator::map(
             nom::bits::complete::take(2usize),
             |x: u8| match x {
@@ -137,8 +137,8 @@ impl FieldType {
         ))(input)
     }
 
-    pub fn field<'a>(self) -> impl Fn(&'a [u8]) -> IResult<&'a[u8], u32, Error<&'a[u8]>> {
-        move |input: &[u8]| -> IResult<&[u8], u32, Error<&'a[u8]>> {
+    pub fn field<'a>(self) -> impl Fn(Span<'a>) -> IResult<Span<'a>, u32, Error<Span<'a>>> {
+        move |input: Span| -> IResult<Span, u32, Error<Span<'a>>> {
             match self {
                 Self::None => Ok((input, 0)),
                 Self::Byte => map(le_u8, |x| x as u32)(input),
@@ -150,13 +150,13 @@ impl FieldType {
 }
 
 impl LengthTypeFlags {
-    pub fn parse<'a>(input: (&'a[u8], usize)) -> IResult<(&'a[u8], usize), Self, Error<(&'a[u8], usize)>> {
-        context("LengthTypeFlags", move |input: (&'a[u8], usize)| {
-            let (input, multiple_payloads_present) = MultiplePayloadsFlag::parse(input)?;
-            let (input, sequence_type) = FieldType::parse(input)?;
-            let (input, padding_len_type) = FieldType::parse(input)?;
-            let (input, packet_len_type) = FieldType::parse(input)?;
+    pub fn parse<'a>(input: (Span<'a>, usize)) -> IResult<(Span<'a>, usize), Self, Error<(Span<'a>, usize)>> {
+        context("LengthTypeFlags", move |input: (Span<'a>, usize)| {
             let (input, error_correction_flag) = ErrorCorrectionFlag::parse(input)?;
+            let (input, packet_len_type) = FieldType::parse(input)?;
+            let (input, padding_len_type) = FieldType::parse(input)?;
+            let (input, sequence_type) = FieldType::parse(input)?;
+            let (input, multiple_payloads_present) = MultiplePayloadsFlag::parse(input)?;
             Ok((input, Self{
                 multiple_payloads_present,
                 sequence_type,
@@ -169,12 +169,12 @@ impl LengthTypeFlags {
 }
 
 impl PropertyFlags {
-    pub fn parse<'a>(input: (&'a [u8], usize)) -> IResult<(&'a [u8], usize), Self, Error<(&'a[u8], usize)>> {
-        context("PropertyFlags", move |input: (&'a[u8], usize)| {
-            let (input, replicated_data_len_type) = FieldType::parse(input)?;
-            let (input, offset_into_media_object_len_type) = FieldType::parse(input)?;
-            let (input, media_object_number_len_type) = FieldType::parse(input)?;
+    pub fn parse<'a>(input: (Span<'a>, usize)) -> IResult<(Span<'a>, usize), Self, Error<(Span<'a>, usize)>> {
+        context("PropertyFlags", move |input: (Span<'a>, usize)| {
             let (input, stream_number_len_type) = FieldType::parse(input)?;
+            let (input, media_object_number_len_type) = FieldType::parse(input)?;
+            let (input, offset_into_media_object_len_type) = FieldType::parse(input)?;
+            let (input, replicated_data_len_type) = FieldType::parse(input)?;
             return Ok((input, Self{
                 replicated_data_len_type,
                 offset_into_media_object_type: offset_into_media_object_len_type,
@@ -186,10 +186,10 @@ impl PropertyFlags {
 }
 
 impl PayloadFlags {
-    pub fn parse<'a>(input: (&'a[u8], usize)) -> IResult<(&'a[u8], usize), Self, Error<(&'a[u8], usize)>> {
-        context("PayloadFlags", move |input: (&'a[u8], usize)| {
-            let (input, number_of_payloads) = take_bits(6usize)(input)?;
+    pub fn parse<'a>(input: (Span<'a>, usize)) -> IResult<(Span<'a>, usize), Self, Error<(Span<'a>, usize)>> {
+        context("PayloadFlags", move |input: (Span<'a>, usize)| {
             let (input, payload_len_type) = FieldType::parse(input)?;
+            let (input, number_of_payloads) = take_bits(6usize)(input)?;
             return Ok((input, Self{
                 number_of_payloads,
                 payload_len_type,
@@ -199,10 +199,10 @@ impl PayloadFlags {
 }
 
 impl StreamFlags {
-    pub fn parse<'a>(input: (&'a[u8], usize)) -> IResult<(&'a[u8], usize), Self, Error<(&'a[u8], usize)>> {
-        context("StreamFlags", move |input: (&'a[u8], usize)| {
-            let (input, stream_number) = take_bits(7usize)(input)?;
+    pub fn parse<'a>(input: (Span<'a>, usize)) -> IResult<(Span<'a>, usize), Self, Error<(Span<'a>, usize)>> {
+        context("StreamFlags", move |input: (Span<'a>, usize)| {
             let (input, key_frame) = map(take_bits(1usize), |x: u8| x == 1)(input)?;
+            let (input, stream_number) = take_bits(7usize)(input)?;
             return Ok((input, Self{
                 stream_number,
                 key_frame,
@@ -212,9 +212,9 @@ impl StreamFlags {
 }
 
 impl<'a> DataPacket<'a> {
-    pub fn parser(total_data_packets: u64, total_packet_len: u64) -> impl FnMut(&'a[u8]) -> IResult<&'a[u8], DataPacket, Error<&'a[u8]>> {
+    pub fn parser(total_data_packets: u64, total_packet_len: u64) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, DataPacket, Error<Span<'a>>> {
         let fixed_packet_len = total_packet_len / total_data_packets;
-        context("DataPacket", move |input: &'a[u8]| {
+        context("DataPacket", move |input: Span<'a>| {
             let initial_remainder = rest_len(input)?.1;
             let (input, error_correction_present) = map(peek(le_u8), |x| x & 0x80 != 0)(input)?;
             let (input, error_correction_data) = nom::combinator::cond(error_correction_present, ErrorCorrectionData::parse)(input)?;
@@ -242,8 +242,8 @@ impl<'a> DataPacket<'a> {
 }
 
 impl ErrorCorrectionData {
-    pub fn parse<'a>(input: &'a[u8]) -> IResult<&'a[u8], ErrorCorrectionData, Error<&'a[u8]>> {
-        context("ErrorCorrectionData", move |input: &'a[u8]| {
+    pub fn parse<'a>(input: Span<'a>) -> IResult<Span<'a>, ErrorCorrectionData, Error<Span<'a>>> {
+        context("ErrorCorrectionData", move |input: Span<'a>| {
             let (input, flags) = le_u8(input)?;
             let (input, ec_type) = le_u8(input)?;
             let (input, ec_cycle) = le_u8(input)?;
@@ -257,8 +257,8 @@ impl ErrorCorrectionData {
 }
 
 impl PayloadParsingData {
-    pub fn parse<'a>(input: &'a[u8]) -> IResult<&'a[u8], PayloadParsingData, Error<&'a[u8]>> {
-        context("PayloadParsingData", move |input: &'a[u8]| {
+    pub fn parse<'a>(input: Span<'a>) -> IResult<Span<'a>, PayloadParsingData, Error<Span<'a>>> {
+        context("PayloadParsingData", move |input: Span<'a>| {
             let (input, length_type_flags) = bits(LengthTypeFlags::parse)(input)?;
             let (input, property_flags) = bits(PropertyFlags::parse)(input)?;
             let (input, packet_length) = length_type_flags.packet_len_type.field()(input)?;
@@ -280,8 +280,8 @@ impl PayloadParsingData {
 }
 
 impl<'a> PayloadData<'a> {
-    pub fn parser(multiple: MultiplePayloadsFlag, property_flags: PropertyFlags) -> impl Fn(&'a[u8]) -> IResult<&'a[u8], PayloadData<'a>, Error<&'a[u8]>> {
-        move |input: &[u8]| -> IResult<&[u8], PayloadData, Error<&'a[u8]>> {
+    pub fn parser(multiple: MultiplePayloadsFlag, property_flags: PropertyFlags) -> impl Fn(Span<'a>) -> IResult<Span<'a>, PayloadData<'a>, Error<Span<'a>>> {
+        move |input: Span| {
             match multiple {
                 MultiplePayloadsFlag::SinglePayload => Self::parser_single(property_flags.clone())(input),
                 MultiplePayloadsFlag::MultiplePayloads => Self::parser_multi(property_flags.clone())(input),
@@ -289,12 +289,12 @@ impl<'a> PayloadData<'a> {
         }
     }
 
-    pub fn parser_single(property_flags: PropertyFlags) -> impl FnMut(&'a[u8]) -> IResult<&'a[u8], PayloadData<'a>, Error<&'a[u8]>> {
+    pub fn parser_single(property_flags: PropertyFlags) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, PayloadData<'a>, Error<Span<'a>>> {
         map(Payload::parser(property_flags, None), |x| PayloadData::SinglePayload(x))
     }
 
-    pub fn parser_multi(property_flags: PropertyFlags) -> impl Fn(&'a[u8]) -> IResult<&'a[u8], PayloadData<'a>, Error<&'a[u8]>> {
-        move |input: &[u8]| -> IResult<&[u8], PayloadData, Error<&'a[u8]>> {
+    pub fn parser_multi(property_flags: PropertyFlags) -> impl Fn(Span<'a>) -> IResult<Span<'a>, PayloadData<'a>, Error<Span<'a>>> {
+        move |input: Span| {
             let (input, payload_flags) = bits(PayloadFlags::parse)(input)?;
             let (input, payloads) = count(Payload::parser(property_flags.clone(), Some(payload_flags.payload_len_type)), payload_flags.number_of_payloads.into())(input)?;
             Ok((input, PayloadData::MultiplePayloads(payloads)))
@@ -303,8 +303,8 @@ impl<'a> PayloadData<'a> {
 }
 
 impl<'a> Payload<'a> {
-    pub fn parser(property_flags: PropertyFlags, payload_length_type: Option<FieldType>) -> impl FnMut(&'a[u8]) -> IResult<&'a[u8], Payload, Error<&'a[u8]>> {
-        context("Payload", move |input: &'a[u8]| {
+    pub fn parser(property_flags: PropertyFlags, payload_length_type: Option<FieldType>) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, Payload, Error<Span<'a>>> {
+        context("Payload", move |input: Span<'a>| {
             let (input, stream_flags) = bits(StreamFlags::parse)(input)?;
             let (input, media_object_number) = property_flags.media_object_number_len_type.field()(input)?;
             let (input, time_or_offset) = property_flags.offset_into_media_object_type.field()(input)?;
@@ -313,12 +313,12 @@ impl<'a> Payload<'a> {
             if replicated_data_len == 1 {
                 // Compressed
                 let (input, presentation_time_delta) = le_u8(input)?;
-                let (input, payload_data) = if let Some(len_type) = payload_length_type {
+                let (input, payload_raw) = if let Some(len_type) = payload_length_type {
                     length_take(len_type.field())(input)?
                 } else {
                     rest(input)?
                 };
-                let sub_payload_data = complete(many0(length_take(le_u8)))(payload_data)?.1;
+                let (_, sub_payload_data) = many0(complete(span_bytes(length_take(le_u8))))(payload_raw)?;
                 Ok((input, Payload::CompressedPayload{
                     stream_flags,
                     media_object_number,
@@ -328,11 +328,11 @@ impl<'a> Payload<'a> {
                 }))
             } else {
                 // Uncompressed
-                let (input, replicated_data) = take(replicated_data_len)(input)?;
+                let (input, replicated_data) = span_bytes(take(replicated_data_len))(input)?;
                 let (input, payload_data) = if let Some(len_type) = payload_length_type {
-                    length_take(len_type.field())(input)?
+                    span_bytes(length_take(len_type.field()))(input)?
                 } else {
-                    rest(input)?
+                    span_bytes(rest)(input)?
                 };
                 Ok((input, Payload::NormalPayload{
                     stream_flags,

@@ -2,6 +2,8 @@ use std::{convert::TryInto, io::Write};
 
 use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16}};
 
+use crate::span::Span;
+
 
 #[derive(Debug, PartialEq)]
 pub struct PriorityRecord {
@@ -15,7 +17,7 @@ pub struct StreamPrioritizationData {
 }
 
 impl PriorityRecord {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, stream_number) = le_u16(input)?;
         let (input, priority_flags) = le_u16(input)?;
         Ok((input, Self{
@@ -36,7 +38,7 @@ impl PriorityRecord {
 }
 
 impl StreamPrioritizationData {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, priority_records) = length_count(le_u16, PriorityRecord::parse)(input)?;
         Ok((input, Self{priority_records}))
     }

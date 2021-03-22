@@ -2,7 +2,7 @@ use std::{convert::TryInto, io::Write};
 
 use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
 
-use crate::widestr::*;
+use crate::{span::Span, widestr::*};
 
 
 #[derive(Debug, PartialEq)]
@@ -11,7 +11,7 @@ pub struct DescriptionRecord<'a> {
     pub stream_number: u16,
     pub data_type: u16,
     pub name: WideStr,
-    pub data: &'a [u8],
+    pub data: Span<'a>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -20,7 +20,7 @@ pub struct MetadataLibraryData<'a> {
 }
 
 impl<'a> DescriptionRecord<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, language_list_index) = le_u16(input)?;
         let (input, stream_number) = le_u16(input)?;
         let (input, name_length) = le_u16(input)?;
@@ -46,7 +46,7 @@ impl<'a> DescriptionRecord<'a> {
         w.write_all(&self.data_type.to_le_bytes())?;
         w.write_all(&data_len.to_le_bytes())?;
         self.name.write(w)?;
-        w.write_all(self.data)?;
+        w.write_all(&self.data)?;
         Ok(())
     }
 
@@ -56,7 +56,7 @@ impl<'a> DescriptionRecord<'a> {
 }
 
 impl<'a> MetadataLibraryData<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, description_records) = length_count(le_u16, DescriptionRecord::parse)(input)?;
         Ok((input, MetadataLibraryData{description_records}))
     }

@@ -30,7 +30,7 @@ use std::{convert::TryInto, io::Write};
 
 use nom::{IResult, bytes::streaming::{tag, take}, combinator::complete, error::ParseError, multi::many0, number::streaming::{le_u32, le_u64, le_u8}};
 
-use crate::{guid::*, object::*};
+use crate::{guid::*, object::*, span::Span};
 
 use self::bitrate_mutual_exclusion::BitrateMutualExclusionData;
 use self::codec_list::CodecListData;
@@ -70,7 +70,7 @@ pub enum HeaderObject<'a> {
 }
 
 impl<'a> HeaderObject<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, obj) = object(input)?;
         Ok((input, match obj {
             Object{guid: FILE_PROPERTIES_OBJECT, data} =>
@@ -109,7 +109,7 @@ impl<'a> HeaderObject<'a> {
         }))
     }
 
-    pub fn parse_many<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Vec<Self>, E> {
+    pub fn parse_many<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Vec<Self>, E> {
         many0(complete(Self::parse))(input)
     }
 
@@ -199,7 +199,7 @@ impl<'a> HeaderObject<'a> {
             HeaderObject::Unknown(unk) => {
                 w.write_all(&unk.guid.as_bytes_ms())?;
                 w.write_all(&data_len.to_le_bytes())?;
-                w.write_all(unk.data)?;
+                w.write_all(&unk.data)?;
             }
         }
         Ok(())
@@ -237,7 +237,7 @@ pub struct HeaderObjects<'a> {
 }
 
 impl<'a> HeaderObjects<'a> {
-    pub fn parse<E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, _guid) = tag(HEADER_OBJECT.as_bytes_ms())(input)?;
         let (input, size) = le_u64(input)?;
         let (input, _num_header_objs) = le_u32(input)?;

@@ -3,7 +3,7 @@ use std::{convert::TryInto, io::Write};
 use uuid::Uuid;
 use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16}};
 
-use crate::guid::*;
+use crate::{guid::*, span::Span};
 
 
 #[derive(Debug, PartialEq)]
@@ -13,7 +13,7 @@ pub struct GroupMutualExclusionData {
 }
 
 impl GroupMutualExclusionData {
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, exclusion_type) = guid(input)?;
         let (input, records) = length_count(le_u16, length_count(le_u16, le_u16))(input)?;
         Ok((input, Self{exclusion_type, records}))

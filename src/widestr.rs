@@ -2,6 +2,8 @@ use std::{convert::TryInto, fmt, io::Write};
 
 use nom::{IResult, combinator::{complete, eof, map}, error::ParseError, multi::{length_count, many0}, number::streaming::{le_u16, le_u32}, sequence::terminated};
 
+use crate::span::Span;
+
 
 #[derive(PartialEq)]
 pub struct WideStr(Vec<u16>);
@@ -16,7 +18,7 @@ impl WideStr {
         String::from_utf16_lossy(&self.0)
     }
 
-    pub fn parse<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         map(terminated(many0(complete(le_u16)), eof), |x| WideStr(x))(input)
     }
 
@@ -39,7 +41,7 @@ impl WideStr {
         self.0.len() * 2
     }
 
-    pub fn parse_count16<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse_count16<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         map(length_count(le_u16, le_u16), |x| WideStr(x))(input)
     }
 
@@ -56,7 +58,7 @@ impl WideStr {
         2 + self.0.len() * 2
     }
 
-    pub fn parse_count32<'a, E: ParseError<&'a[u8]>>(input: &'a[u8]) -> IResult<&'a[u8], Self, E> {
+    pub fn parse_count32<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         map(length_count(le_u32, le_u16), |x| WideStr(x))(input)
     }
 
