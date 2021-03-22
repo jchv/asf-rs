@@ -1,9 +1,12 @@
-use std::{convert::TryInto, io::Write};
-
-use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
-
 use crate::{span::Span, widestr::*};
-
+use nom::{
+    bytes::streaming::take,
+    error::ParseError,
+    multi::length_count,
+    number::streaming::{le_u16, le_u32},
+    IResult,
+};
+use std::{convert::TryInto, io::Write};
 
 #[derive(Debug, PartialEq)]
 pub struct DescriptionRecord<'a> {
@@ -28,13 +31,16 @@ impl<'a> DescriptionRecord<'a> {
         let (input, data_length) = le_u32(input)?;
         let (input, name) = take(name_length)(input)?;
         let (input, data) = take(data_length)(input)?;
-        Ok((input, DescriptionRecord{
-            language_list_index,
-            stream_number,
-            data_type,
-            name: WideStr::parse(name)?.1,
-            data,
-        }))
+        Ok((
+            input,
+            DescriptionRecord {
+                language_list_index,
+                stream_number,
+                data_type,
+                name: WideStr::parse(name)?.1,
+                data,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -51,14 +57,27 @@ impl<'a> DescriptionRecord<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        2 + 2 + 2 + 2 + 4 + self.name.size_of() + self.data.len()
+        let mut len = 0;
+        len += 2;
+        len += 2;
+        len += 2;
+        len += 2;
+        len += 4;
+        len += self.name.size_of();
+        len += self.data.len();
+        len
     }
 }
 
 impl<'a> MetadataLibraryData<'a> {
     pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, description_records) = length_count(le_u16, DescriptionRecord::parse)(input)?;
-        Ok((input, MetadataLibraryData{description_records}))
+        Ok((
+            input,
+            MetadataLibraryData {
+                description_records,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -71,6 +90,11 @@ impl<'a> MetadataLibraryData<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        2 + self.description_records.iter().map(|x| x.size_of()).sum::<usize>()
+        let mut len = 0;
+        len += 2;
+        for description_record in self.description_records.iter() {
+            len += description_record.size_of();
+        }
+        len
     }
 }

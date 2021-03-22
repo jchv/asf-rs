@@ -1,9 +1,11 @@
-use std::io::Write;
-
-use uuid::Uuid;
-use nom::{IResult, error::ParseError, number::streaming::{le_u32, le_u64}};
-
 use crate::{guid::*, span::Span};
+use nom::{
+    error::ParseError,
+    number::streaming::{le_u32, le_u64},
+    IResult,
+};
+use std::io::Write;
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq)]
 pub struct FilePropertiesData {
@@ -34,19 +36,22 @@ impl FilePropertiesData {
         let (input, maximum_data_packet_size) = le_u32(input)?;
         let (input, maximum_bitrate) = le_u32(input)?;
 
-        Ok((input, Self{
-            file_id,
-            file_size,
-            creation_date,
-            data_packets_count,
-            play_duration,
-            send_duration,
-            preroll,
-            flags,
-            minimum_data_packet_size,
-            maximum_data_packet_size,
-            maximum_bitrate,
-        }))
+        Ok((
+            input,
+            Self {
+                file_id,
+                file_size,
+                creation_date,
+                data_packets_count,
+                play_duration,
+                send_duration,
+                preroll,
+                flags,
+                minimum_data_packet_size,
+                maximum_data_packet_size,
+                maximum_bitrate,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -65,6 +70,18 @@ impl FilePropertiesData {
     }
 
     pub fn size_of(&self) -> usize {
-        16 + 8 + 8 + 8 + 8 + 8 + 8 + 4 + 4 + 4 + 4
+        let mut len = 0;
+        len += 16;
+        len += 8;
+        len += 8;
+        len += 8;
+        len += 8;
+        len += 8;
+        len += 8;
+        len += 4;
+        len += 4;
+        len += 4;
+        len += 4;
+        len
     }
 }

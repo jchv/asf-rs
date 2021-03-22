@@ -1,9 +1,6 @@
-use std::io::Write;
-
-use nom::{IResult, error::ParseError, number::streaming::le_u8};
-
 use crate::span::Span;
-
+use nom::{error::ParseError, number::streaming::le_u8, IResult};
+use std::io::Write;
 
 #[derive(Debug, PartialEq)]
 pub struct CompatibilityData {
@@ -15,10 +12,7 @@ impl CompatibilityData {
     pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, profile) = le_u8(input)?;
         let (input, mode) = le_u8(input)?;
-        Ok((input, Self{
-            profile,
-            mode,
-        }))
+        Ok((input, Self { profile, mode }))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -28,6 +22,9 @@ impl CompatibilityData {
     }
 
     pub fn size_of(&self) -> usize {
-        2 + 2
+        let mut len = 0;
+        len += 2;
+        len += 2;
+        len
     }
 }

@@ -1,10 +1,7 @@
-use std::{convert::TryInto, io::Write};
-
-use uuid::Uuid;
-use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u32};
-
 use crate::{guid::*, span::Span};
-
+use nom::{bytes::streaming::take, error::ParseError, number::streaming::le_u32, IResult};
+use std::{convert::TryInto, io::Write};
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq)]
 pub struct ErrorCorrectionData<'a> {
@@ -18,7 +15,13 @@ impl<'a> ErrorCorrectionData<'a> {
         let (input, error_correction_data_length) = le_u32(input)?;
         let (input, error_correction_data) = take(error_correction_data_length)(input)?;
 
-        Ok((input, Self{error_correction_type, error_correction_data}))
+        Ok((
+            input,
+            Self {
+                error_correction_type,
+                error_correction_data,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -30,6 +33,10 @@ impl<'a> ErrorCorrectionData<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        16 + 4 + self.error_correction_data.len()
+        let mut len = 0;
+        len += 16;
+        len += 4;
+        len += self.error_correction_data.len();
+        len
     }
 }

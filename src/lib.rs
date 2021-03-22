@@ -13,9 +13,11 @@ pub mod widestr;
 
 pub(crate) mod combinators;
 
-use nom::{IResult, Err};
+use nom::{Err, IResult};
 
-use crate::{data::DataObject, error::Error, header::HeaderObjects, index::IndexObjects, span::Span};
+use crate::{
+    data::DataObject, error::Error, header::HeaderObjects, index::IndexObjects, span::Span,
+};
 
 #[derive(Debug, PartialEq)]
 pub struct Container<'a> {
@@ -29,7 +31,14 @@ impl<'a> Container<'a> {
         let (input, header) = HeaderObjects::parse(input)?;
         let (input, data) = DataObject::parse(input)?;
         let (input, indices) = IndexObjects::parse(input)?;
-        Ok((input, Container{header, data, indices}))
+        Ok((
+            input,
+            Container {
+                header,
+                data,
+                indices,
+            },
+        ))
     }
 }
 
@@ -45,7 +54,8 @@ mod tests {
 
     #[test]
     fn basic_wmv() {
-        let (remaining, _data) = Container::parse(Span::new(BASIC_WMV)).expect("to parse successfully");
+        let (remaining, _data) =
+            Container::parse(Span::new(BASIC_WMV)).expect("to parse successfully");
         assert_eq!(remaining.len(), 0);
     }
 }

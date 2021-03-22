@@ -1,9 +1,6 @@
-use std::{convert::TryInto, io::Write};
-
-use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u32};
-
 use crate::span::Span;
-
+use nom::{bytes::streaming::take, error::ParseError, number::streaming::le_u32, IResult};
+use std::{convert::TryInto, io::Write};
 
 #[derive(Debug, PartialEq)]
 pub struct DigitalSignatureData<'a> {
@@ -16,10 +13,13 @@ impl<'a> DigitalSignatureData<'a> {
         let (input, signature_type) = le_u32(input)?;
         let (input, signature_data_size) = le_u32(input)?;
         let (input, signature_data) = take(signature_data_size)(input)?;
-        Ok((input, DigitalSignatureData{
-            signature_type,
-            signature_data,
-        }))
+        Ok((
+            input,
+            DigitalSignatureData {
+                signature_type,
+                signature_data,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -32,6 +32,10 @@ impl<'a> DigitalSignatureData<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        4 + 4 + self.signature_data.len()
+        let mut len = 0;
+        len += 4;
+        len += 4;
+        len += self.signature_data.len();
+        len
     }
 }

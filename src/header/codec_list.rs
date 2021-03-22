@@ -1,10 +1,13 @@
-use std::{convert::TryInto, io::Write};
-
-use uuid::Uuid;
-use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
-
 use crate::{guid::*, span::Span, widestr::*};
-
+use nom::{
+    bytes::streaming::take,
+    error::ParseError,
+    multi::length_count,
+    number::streaming::{le_u16, le_u32},
+    IResult,
+};
+use std::{convert::TryInto, io::Write};
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq)]
 pub struct CodecEntry<'a> {
@@ -27,7 +30,15 @@ impl<'a> CodecEntry<'a> {
         let (input, codec_description) = WideStr::parse_count16(input)?;
         let (input, codec_information_len) = le_u16(input)?;
         let (input, codec_information) = take(codec_information_len)(input)?;
-        Ok((input, Self{codec_type, codec_name, codec_description, codec_information}))
+        Ok((
+            input,
+            Self {
+                codec_type,
+                codec_name,
+                codec_description,
+                codec_information,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -41,7 +52,13 @@ impl<'a> CodecEntry<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        2 + self.codec_name.size_of_count16() + self.codec_description.size_of_count16() + 2 + self.codec_information.len()
+        let mut len = 0;
+        len += 2;
+        len += self.codec_name.size_of_count16();
+        len += self.codec_description.size_of_count16();
+        len += 2;
+        len += self.codec_information.len();
+        len
     }
 }
 
@@ -49,7 +66,13 @@ impl<'a> CodecListData<'a> {
     pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, reserved) = guid(input)?;
         let (input, codec_entries) = length_count(le_u32, CodecEntry::parse)(input)?;
-        Ok((input, Self{reserved, codec_entries}))
+        Ok((
+            input,
+            Self {
+                reserved,
+                codec_entries,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -63,6 +86,12 @@ impl<'a> CodecListData<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        16 + 4 + self.codec_entries.iter().map(|x| x.size_of()).sum::<usize>()
+        let mut len = 0;
+        len += 16;
+        len += 4;
+        for codec_entry in self.codec_entries.iter() {
+            len += codec_entry.size_of()
+        }
+        len
     }
 }

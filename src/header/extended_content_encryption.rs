@@ -1,9 +1,6 @@
-use std::{convert::TryInto, io::Write};
-
-use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u32};
-
 use crate::span::Span;
-
+use nom::{bytes::streaming::take, error::ParseError, number::streaming::le_u32, IResult};
+use std::{convert::TryInto, io::Write};
 
 #[derive(Debug, PartialEq)]
 pub struct ExtendedContentEncryptionData<'a> {
@@ -14,9 +11,7 @@ impl<'a> ExtendedContentEncryptionData<'a> {
     pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, data_size) = le_u32(input)?;
         let (input, data) = take(data_size)(input)?;
-        Ok((input, ExtendedContentEncryptionData{
-            data,
-        }))
+        Ok((input, ExtendedContentEncryptionData { data }))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -27,6 +22,9 @@ impl<'a> ExtendedContentEncryptionData<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        4 + self.data.len()
+        let mut len = 0;
+        len += 4;
+        len += self.data.len();
+        len
     }
 }

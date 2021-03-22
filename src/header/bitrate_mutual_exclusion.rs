@@ -1,10 +1,7 @@
-use std::{convert::TryInto, io::Write};
-
-use uuid::Uuid;
-use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16}};
-
 use crate::{guid::*, span::Span};
-
+use nom::{error::ParseError, multi::length_count, number::streaming::le_u16, IResult};
+use std::{convert::TryInto, io::Write};
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq)]
 pub struct BitrateMutualExclusionData {
@@ -16,7 +13,13 @@ impl BitrateMutualExclusionData {
     pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, exclusion_type) = guid(input)?;
         let (input, stream_numbers) = length_count(le_u16, le_u16)(input)?;
-        Ok((input, Self{exclusion_type, stream_numbers}))
+        Ok((
+            input,
+            Self {
+                exclusion_type,
+                stream_numbers,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -30,6 +33,10 @@ impl BitrateMutualExclusionData {
     }
 
     pub fn size_of(&self) -> usize {
-        16 + 2 + self.stream_numbers.len() * 2
+        let mut len = 0;
+        len += 16;
+        len += 2;
+        len += self.stream_numbers.len() * 2;
+        len
     }
 }

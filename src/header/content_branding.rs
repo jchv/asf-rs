@@ -1,9 +1,6 @@
-use std::{convert::TryInto, io::Write};
-
-use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u32};
-
 use crate::span::Span;
-
+use nom::{bytes::streaming::take, error::ParseError, number::streaming::le_u32, IResult};
+use std::{convert::TryInto, io::Write};
 
 #[derive(Debug, PartialEq)]
 pub struct ContentBrandingData<'a> {
@@ -22,12 +19,15 @@ impl<'a> ContentBrandingData<'a> {
         let (input, banner_image_url) = take(banner_image_url_length)(input)?;
         let (input, copyright_url_length) = le_u32(input)?;
         let (input, copyright_url) = take(copyright_url_length)(input)?;
-        Ok((input, Self{
-            banner_image_type,
-            banner_image_data,
-            banner_image_url,
-            copyright_url,
-        }))
+        Ok((
+            input,
+            Self {
+                banner_image_type,
+                banner_image_data,
+                banner_image_url,
+                copyright_url,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -45,6 +45,14 @@ impl<'a> ContentBrandingData<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        4 + 4 + self.banner_image_data.len() + 4 + self.banner_image_url.len() + 4 + self.copyright_url.len()
+        let mut len = 0;
+        len += 4;
+        len += 4;
+        len += self.banner_image_data.len();
+        len += 4;
+        len += self.banner_image_url.len();
+        len += 4;
+        len += self.copyright_url.len();
+        len
     }
 }

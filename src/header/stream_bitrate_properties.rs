@@ -1,9 +1,11 @@
-use std::{convert::TryInto, io::Write};
-
-use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
-
 use crate::span::Span;
-
+use nom::{
+    error::ParseError,
+    multi::length_count,
+    number::streaming::{le_u16, le_u32},
+    IResult,
+};
+use std::{convert::TryInto, io::Write};
 
 #[derive(Debug, PartialEq)]
 pub struct BitrateRecord {
@@ -13,14 +15,20 @@ pub struct BitrateRecord {
 
 #[derive(Debug, PartialEq)]
 pub struct StreamBitratePropertiesData {
-    pub bitrate_records: Vec<BitrateRecord>
+    pub bitrate_records: Vec<BitrateRecord>,
 }
 
 impl BitrateRecord {
     pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, flags) = le_u16(input)?;
         let (input, average_bitrate) = le_u32(input)?;
-        Ok((input, Self{flags, average_bitrate}))
+        Ok((
+            input,
+            Self {
+                flags,
+                average_bitrate,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -30,14 +38,17 @@ impl BitrateRecord {
     }
 
     pub fn size_of(&self) -> usize {
-        2 + 4
+        let mut len = 0;
+        len += 2;
+        len += 4;
+        len
     }
 }
 
 impl StreamBitratePropertiesData {
     pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, bitrate_records) = length_count(le_u16, BitrateRecord::parse)(input)?;
-        Ok((input, Self{bitrate_records}))
+        Ok((input, Self { bitrate_records }))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -50,6 +61,11 @@ impl StreamBitratePropertiesData {
     }
 
     pub fn size_of(&self) -> usize {
-        2 + self.bitrate_records.iter().map(|x| x.size_of()).sum::<usize>()
+        let mut len = 0;
+        len += 2;
+        for bitrate_record in self.bitrate_records.iter() {
+            len += bitrate_record.size_of();
+        }
+        len
     }
 }

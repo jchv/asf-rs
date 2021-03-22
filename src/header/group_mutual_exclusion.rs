@@ -1,10 +1,7 @@
-use std::{convert::TryInto, io::Write};
-
-use uuid::Uuid;
-use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16}};
-
 use crate::{guid::*, span::Span};
-
+use nom::{error::ParseError, multi::length_count, number::streaming::le_u16, IResult};
+use std::{convert::TryInto, io::Write};
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq)]
 pub struct GroupMutualExclusionData {
@@ -16,7 +13,13 @@ impl GroupMutualExclusionData {
     pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, exclusion_type) = guid(input)?;
         let (input, records) = length_count(le_u16, length_count(le_u16, le_u16))(input)?;
-        Ok((input, Self{exclusion_type, records}))
+        Ok((
+            input,
+            Self {
+                exclusion_type,
+                records,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -34,6 +37,13 @@ impl GroupMutualExclusionData {
     }
 
     pub fn size_of(&self) -> usize {
-        16 + 2 + self.records.iter().map(|x| 2 + 2 * x.len()).sum::<usize>()
+        let mut len = 0;
+        len += 16;
+        len += 2;
+        for record in &self.records {
+            len += 2;
+            len += 2 * record.len();
+        }
+        len
     }
 }

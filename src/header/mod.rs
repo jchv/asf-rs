@@ -26,11 +26,6 @@ pub mod stream_bitrate_properties;
 pub mod stream_prioritization;
 pub mod stream_properties;
 pub mod timecode_index_parameters;
-use std::{convert::TryInto, io::Write};
-
-use nom::{IResult, bytes::streaming::{tag, take}, combinator::complete, error::ParseError, multi::many0, number::streaming::{le_u32, le_u64, le_u8}};
-
-use crate::{guid::*, object::*, span::Span};
 
 use self::bitrate_mutual_exclusion::BitrateMutualExclusionData;
 use self::codec_list::CodecListData;
@@ -47,6 +42,16 @@ use self::marker::MarkerData;
 use self::script_command::ScriptCommandData;
 use self::stream_bitrate_properties::StreamBitratePropertiesData;
 use self::stream_properties::StreamPropertiesData;
+use crate::{guid::*, object::*, span::Span};
+use nom::{
+    bytes::streaming::{tag, take},
+    combinator::complete,
+    error::ParseError,
+    multi::many0,
+    number::streaming::{le_u32, le_u64, le_u8},
+    IResult,
+};
+use std::{convert::TryInto, io::Write};
 
 #[derive(Debug, PartialEq)]
 pub enum HeaderObject<'a> {
@@ -66,47 +71,84 @@ pub enum HeaderObject<'a> {
     ExtendedContentEncryption(ExtendedContentEncryptionData<'a>),
     DigitalSignature(DigitalSignatureData<'a>),
     Padding(usize),
-    Unknown(Object<'a>)
+    Unknown(Object<'a>),
 }
 
 impl<'a> HeaderObject<'a> {
     pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, obj) = object(input)?;
-        Ok((input, match obj {
-            Object{guid: FILE_PROPERTIES_OBJECT, data} =>
-                (Self::FileProperties(FilePropertiesData::parse(data)?.1)),
-            Object{guid: STREAM_PROPERTIES_OBJECT, data} =>
-                (Self::StreamProperties(StreamPropertiesData::parse(data)?.1)),
-            Object{guid: HEADER_EXTENSION_OBJECT, data} =>
-                (Self::HeaderExtension(HeaderExtensionData::parse(data)?.1)),
-            Object{guid: CODEC_LIST_OBJECT, data} =>
-                (Self::CodecList(CodecListData::parse(data)?.1)),
-            Object{guid: SCRIPT_COMMAND_OBJECT, data} =>
-                (Self::ScriptCommand(ScriptCommandData::parse(data)?.1)),
-            Object{guid: MARKER_OBJECT, data} =>
-                (Self::Marker(MarkerData::parse(data)?.1)),
-            Object{guid: BITRATE_MUTUAL_EXCLUSION_OBJECT, data} =>
-                (Self::BitrateMutualExclusion(BitrateMutualExclusionData::parse(data)?.1)),
-            Object{guid: ERROR_CORRECTION_OBJECT, data} =>
-                (Self::ErrorCorrection(ErrorCorrectionData::parse(data)?.1)),
-            Object{guid: CONTENT_DESCRIPTION_OBJECT, data} =>
-                (Self::ContentDescription(ContentDescriptionData::parse(data)?.1)),
-            Object{guid: EXTENDED_CONTENT_DESCRIPTION_OBJECT, data} =>
-                (Self::ExtendedContentDescription(ExtendedContentDescriptionData::parse(data)?.1)),
-            Object{guid: STREAM_BITRATE_PROPERTIES_OBJECT, data} =>
-                (Self::StreamBitrateProperties(StreamBitratePropertiesData::parse(data)?.1)),
-            Object{guid: CONTENT_BRANDING_OBJECT, data} =>
-                (Self::ContentBranding(ContentBrandingData::parse(data)?.1)),
-            Object{guid: CONTENT_ENCRYPTION_OBJECT, data} =>
-                (Self::ContentEncryption(ContentEncryptionData::parse(data)?.1)),
-            Object{guid: EXTENDED_CONTENT_ENCRYPTION_OBJECT, data} =>
-                (Self::ExtendedContentEncryption(ExtendedContentEncryptionData::parse(data)?.1)),
-            Object{guid: DIGITAL_SIGNATURE_OBJECT, data} =>
-                (Self::DigitalSignature(DigitalSignatureData::parse(data)?.1)),
-            Object{guid: PADDING_OBJECT, data} =>
-                (Self::Padding(data.len())),
-            unknown => Self::Unknown(unknown)
-        }))
+        Ok((
+            input,
+            match obj {
+                Object {
+                    guid: FILE_PROPERTIES_OBJECT,
+                    data,
+                } => (Self::FileProperties(FilePropertiesData::parse(data)?.1)),
+                Object {
+                    guid: STREAM_PROPERTIES_OBJECT,
+                    data,
+                } => (Self::StreamProperties(StreamPropertiesData::parse(data)?.1)),
+                Object {
+                    guid: HEADER_EXTENSION_OBJECT,
+                    data,
+                } => (Self::HeaderExtension(HeaderExtensionData::parse(data)?.1)),
+                Object {
+                    guid: CODEC_LIST_OBJECT,
+                    data,
+                } => (Self::CodecList(CodecListData::parse(data)?.1)),
+                Object {
+                    guid: SCRIPT_COMMAND_OBJECT,
+                    data,
+                } => (Self::ScriptCommand(ScriptCommandData::parse(data)?.1)),
+                Object {
+                    guid: MARKER_OBJECT,
+                    data,
+                } => (Self::Marker(MarkerData::parse(data)?.1)),
+                Object {
+                    guid: BITRATE_MUTUAL_EXCLUSION_OBJECT,
+                    data,
+                } => (Self::BitrateMutualExclusion(BitrateMutualExclusionData::parse(data)?.1)),
+                Object {
+                    guid: ERROR_CORRECTION_OBJECT,
+                    data,
+                } => (Self::ErrorCorrection(ErrorCorrectionData::parse(data)?.1)),
+                Object {
+                    guid: CONTENT_DESCRIPTION_OBJECT,
+                    data,
+                } => (Self::ContentDescription(ContentDescriptionData::parse(data)?.1)),
+                Object {
+                    guid: EXTENDED_CONTENT_DESCRIPTION_OBJECT,
+                    data,
+                } => {
+                    Self::ExtendedContentDescription(ExtendedContentDescriptionData::parse(data)?.1)
+                }
+                Object {
+                    guid: STREAM_BITRATE_PROPERTIES_OBJECT,
+                    data,
+                } => (Self::StreamBitrateProperties(StreamBitratePropertiesData::parse(data)?.1)),
+                Object {
+                    guid: CONTENT_BRANDING_OBJECT,
+                    data,
+                } => (Self::ContentBranding(ContentBrandingData::parse(data)?.1)),
+                Object {
+                    guid: CONTENT_ENCRYPTION_OBJECT,
+                    data,
+                } => (Self::ContentEncryption(ContentEncryptionData::parse(data)?.1)),
+                Object {
+                    guid: EXTENDED_CONTENT_ENCRYPTION_OBJECT,
+                    data,
+                } => Self::ExtendedContentEncryption(ExtendedContentEncryptionData::parse(data)?.1),
+                Object {
+                    guid: DIGITAL_SIGNATURE_OBJECT,
+                    data,
+                } => (Self::DigitalSignature(DigitalSignatureData::parse(data)?.1)),
+                Object {
+                    guid: PADDING_OBJECT,
+                    data,
+                } => (Self::Padding(data.len())),
+                unknown => Self::Unknown(unknown),
+            },
+        ))
     }
 
     pub fn parse_many<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Vec<Self>, E> {
@@ -206,8 +248,10 @@ impl<'a> HeaderObject<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        16 + 8 +
-        match self {
+        let mut len = 0;
+        len += 16;
+        len += 8;
+        len += match self {
             HeaderObject::FileProperties(data) => data.size_of(),
             HeaderObject::StreamProperties(data) => data.size_of(),
             HeaderObject::HeaderExtension(data) => data.size_of(),
@@ -225,7 +269,8 @@ impl<'a> HeaderObject<'a> {
             HeaderObject::DigitalSignature(data) => data.size_of(),
             HeaderObject::Padding(size) => *size,
             HeaderObject::Unknown(unk) => unk.data.len(),
-        }
+        };
+        len
     }
 }
 
@@ -233,7 +278,7 @@ impl<'a> HeaderObject<'a> {
 pub struct HeaderObjects<'a> {
     pub reserved1: u8,
     pub reserved2: u8,
-    pub objects: Vec<HeaderObject<'a>>
+    pub objects: Vec<HeaderObject<'a>>,
 }
 
 impl<'a> HeaderObjects<'a> {
@@ -244,7 +289,14 @@ impl<'a> HeaderObjects<'a> {
         let (input, reserved1) = le_u8(input)?;
         let (input, reserved2) = le_u8(input)?;
         let (input, data) = take(size - 30)(input)?;
-        Ok((input, Self{reserved1, reserved2, objects: HeaderObject::parse_many(data)?.1}))
+        Ok((
+            input,
+            Self {
+                reserved1,
+                reserved2,
+                objects: HeaderObject::parse_many(data)?.1,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -262,6 +314,15 @@ impl<'a> HeaderObjects<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        16 + 8 + 4 + 1 + 1 + self.objects.iter().map(|x| x.size_of()).sum::<usize>()
+        let mut len = 0;
+        len += 16;
+        len += 8;
+        len += 4;
+        len += 1;
+        len += 1;
+        for object in self.objects.iter() {
+            len += object.size_of();
+        }
+        len
     }
 }

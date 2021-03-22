@@ -1,10 +1,13 @@
-use std::{convert::TryInto, io::Write};
-
-use uuid::Uuid;
-use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u16, le_u32}};
-
 use crate::{guid::*, span::Span};
-
+use nom::{
+    bytes::streaming::take,
+    error::ParseError,
+    multi::length_count,
+    number::streaming::{le_u16, le_u32},
+    IResult,
+};
+use std::{convert::TryInto, io::Write};
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq)]
 pub struct EncryptedObjectRecord<'a> {
@@ -30,10 +33,7 @@ impl<'a> EncryptedObjectRecord<'a> {
         let (input, object_type) = le_u16(input)?;
         let (input, length) = le_u16(input)?;
         let (input, data) = take(length)(input)?;
-        Ok((input, Self{
-            object_type,
-            data,
-        }))
+        Ok((input, Self { object_type, data }))
     }
 
     fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -45,7 +45,11 @@ impl<'a> EncryptedObjectRecord<'a> {
     }
 
     fn size_of(&self) -> usize {
-        2 + 2 + self.data.len()
+        let mut len = 0;
+        len += 2;
+        len += 2;
+        len += self.data.len();
+        len
     }
 }
 
@@ -53,15 +57,19 @@ impl<'a> ContentEncryptionRecord<'a> {
     pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, system_id) = guid(input)?;
         let (input, system_version) = le_u32(input)?;
-        let (input, encrypted_object_records) = length_count(le_u16, EncryptedObjectRecord::parse)(input)?;
+        let (input, encrypted_object_records) =
+            length_count(le_u16, EncryptedObjectRecord::parse)(input)?;
         let (input, data_size) = le_u32(input)?;
         let (input, data) = take(data_size)(input)?;
-        Ok((input, Self{
-            system_id,
-            system_version,
-            encrypted_object_records,
-            data,
-        }))
+        Ok((
+            input,
+            Self {
+                system_id,
+                system_version,
+                encrypted_object_records,
+                data,
+            },
+        ))
     }
 
     fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -79,20 +87,34 @@ impl<'a> ContentEncryptionRecord<'a> {
     }
 
     fn size_of(&self) -> usize {
-        16 + 4 + 2 + self.encrypted_object_records.iter().map(|x| x.size_of()).sum::<usize>() + 4 + self.data.len()
+        let mut len = 0;
+        len += 16;
+        len += 4;
+        len += 2;
+        for record in self.encrypted_object_records.iter() {
+            len += record.size_of()
+        }
+        len += 4;
+        len += self.data.len();
+        len
     }
 }
 
 impl<'a> AdvancedContentEncryptionData<'a> {
     pub fn parse<E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
-        let (input, content_encryption_records) = length_count(le_u16, ContentEncryptionRecord::parse)(input)?;
-        Ok((input, Self{
-            content_encryption_records,
-        }))
+        let (input, content_encryption_records) =
+            length_count(le_u16, ContentEncryptionRecord::parse)(input)?;
+        Ok((
+            input,
+            Self {
+                content_encryption_records,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
-        let content_encryption_records_len: u16 = self.content_encryption_records.len().try_into()?;
+        let content_encryption_records_len: u16 =
+            self.content_encryption_records.len().try_into()?;
         w.write_all(&content_encryption_records_len.to_le_bytes())?;
         for record in self.content_encryption_records.iter() {
             record.write(w)?
@@ -101,6 +123,11 @@ impl<'a> AdvancedContentEncryptionData<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        2 + self.content_encryption_records.iter().map(|x| x.size_of()).sum::<usize>()
+        let mut len = 0;
+        len += 2;
+        for record in self.content_encryption_records.iter() {
+            len += record.size_of()
+        }
+        len
     }
 }

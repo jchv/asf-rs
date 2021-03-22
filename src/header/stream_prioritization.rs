@@ -1,9 +1,6 @@
-use std::{convert::TryInto, io::Write};
-
-use nom::{IResult, error::ParseError, multi::length_count, number::streaming::{le_u16}};
-
 use crate::span::Span;
-
+use nom::{error::ParseError, multi::length_count, number::streaming::le_u16, IResult};
+use std::{convert::TryInto, io::Write};
 
 #[derive(Debug, PartialEq)]
 pub struct PriorityRecord {
@@ -20,10 +17,13 @@ impl PriorityRecord {
     pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, stream_number) = le_u16(input)?;
         let (input, priority_flags) = le_u16(input)?;
-        Ok((input, Self{
-            stream_number,
-            priority_flags,
-        }))
+        Ok((
+            input,
+            Self {
+                stream_number,
+                priority_flags,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -33,14 +33,17 @@ impl PriorityRecord {
     }
 
     pub fn size_of(&self) -> usize {
-        2 + 2
+        let mut len = 0;
+        len += 2;
+        len += 2;
+        len
     }
 }
 
 impl StreamPrioritizationData {
     pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, priority_records) = length_count(le_u16, PriorityRecord::parse)(input)?;
-        Ok((input, Self{priority_records}))
+        Ok((input, Self { priority_records }))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -53,6 +56,11 @@ impl StreamPrioritizationData {
     }
 
     pub fn size_of(&self) -> usize {
-        2 + self.priority_records.iter().map(|x| x.size_of()).sum::<usize>()
+        let mut len = 0;
+        len += 2;
+        for priority_record in self.priority_records.iter() {
+            len += priority_record.size_of();
+        }
+        len
     }
 }

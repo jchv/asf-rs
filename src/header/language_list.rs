@@ -1,9 +1,12 @@
-use std::{convert::TryInto, io::Write};
-
-use nom::{IResult, bytes::streaming::take, error::ParseError, multi::length_count, number::streaming::{le_u8, le_u16}};
-
 use crate::{span::Span, widestr::*};
-
+use nom::{
+    bytes::streaming::take,
+    error::ParseError,
+    multi::length_count,
+    number::streaming::{le_u16, le_u8},
+    IResult,
+};
+use std::{convert::TryInto, io::Write};
 
 #[derive(Debug, PartialEq)]
 pub struct LanguageListData {
@@ -16,10 +19,15 @@ impl LanguageListData {
         let (input, data) = take(length)(input)?;
         Ok((input, WideStr::parse(data)?.1))
     }
-    
+
     pub fn parse<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Self, E> {
         let (input, language_id_records) = length_count(le_u16, Self::parse_id)(input)?;
-        Ok((input, Self{language_id_records}))
+        Ok((
+            input,
+            Self {
+                language_id_records,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -34,6 +42,12 @@ impl LanguageListData {
     }
 
     pub fn size_of(&self) -> usize {
-        2 + self.language_id_records.iter().map(|x| 1 + x.size_of()).sum::<usize>()
+        let mut len = 0;
+        len += 2;
+        for language_id_record in self.language_id_records.iter() {
+            len += 1;
+            len += language_id_record.size_of()
+        }
+        len
     }
 }

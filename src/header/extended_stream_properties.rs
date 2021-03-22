@@ -1,11 +1,15 @@
-use std::{convert::TryInto, io::Write};
-
-use nom::{IResult, bytes::streaming::take, combinator::opt, error::ParseError, multi::count, number::streaming::{le_u16, le_u32, le_u64}};
-use uuid::Uuid;
-
-use crate::{guid::*, object::*, span::Span, widestr::*};
-
 use super::stream_properties::*;
+use crate::{guid::*, object::*, span::Span, widestr::*};
+use nom::{
+    bytes::streaming::take,
+    combinator::opt,
+    error::ParseError,
+    multi::count,
+    number::streaming::{le_u16, le_u32, le_u64},
+    IResult,
+};
+use std::{convert::TryInto, io::Write};
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq)]
 pub struct StreamName {
@@ -45,10 +49,13 @@ impl StreamName {
         let (input, language_id_index) = le_u16(input)?;
         let (input, stream_name_length) = le_u16(input)?;
         let (input, stream_name) = take(stream_name_length)(input)?;
-        Ok((input, Self{
-            language_id_index,
-            stream_name: WideStr::parse(stream_name)?.1,
-        }))
+        Ok((
+            input,
+            Self {
+                language_id_index,
+                stream_name: WideStr::parse(stream_name)?.1,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -60,7 +67,11 @@ impl StreamName {
     }
 
     pub fn size_of(&self) -> usize {
-        2 + 2 + self.stream_name.size_of()
+        let mut len = 0;
+        len += 2;
+        len += 2;
+        len += self.stream_name.size_of();
+        len
     }
 }
 
@@ -70,11 +81,14 @@ impl<'a> PayloadExtensionSystem<'a> {
         let (input, data_size) = le_u16(input)?;
         let (input, info_length) = le_u32(input)?;
         let (input, info) = take(info_length)(input)?;
-        Ok((input, PayloadExtensionSystem{
-            id,
-            data_size,
-            info,
-        }))
+        Ok((
+            input,
+            PayloadExtensionSystem {
+                id,
+                data_size,
+                info,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -87,7 +101,12 @@ impl<'a> PayloadExtensionSystem<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        16 + 2 + 4 + self.info.len()
+        let mut len = 0;
+        len += 16;
+        len += 2;
+        len += 4;
+        len += self.info.len();
+        len
     }
 }
 
@@ -109,34 +128,41 @@ impl<'a> ExtendedStreamPropertiesData<'a> {
         let (input, stream_name_count) = le_u16(input)?;
         let (input, payload_extension_system_count) = le_u16(input)?;
         let (input, stream_names) = count(StreamName::parse, stream_name_count.into())(input)?;
-        let (input, payload_extension_systems) = count(PayloadExtensionSystem::parse, payload_extension_system_count.into())(input)?;
+        let (input, payload_extension_systems) = count(
+            PayloadExtensionSystem::parse,
+            payload_extension_system_count.into(),
+        )(input)?;
         let (input, stream_properties_object) = opt(object)(input)?;
-        Ok((input, ExtendedStreamPropertiesData{
-            start_time,
-            end_time,
-            data_bitrate,
-            buffer_size,
-            initial_buffer_fullness,
-            alternate_data_bitrate,
-            alternate_buffer_size,
-            alternate_initial_buffer_fullness,
-            maximum_object_size,
-            flags,
-            stream_number,
-            stream_language_id_index,
-            average_time_per_frame,
-            stream_names,
-            payload_extension_systems,
-            stream_properties_object: stream_properties_object
-                .map(|x| StreamPropertiesData::parse(x.data))
-                .map_or(Ok(None), |r| r.map(Some))?
-                .map(|x| x.1),
-        }))
+        Ok((
+            input,
+            ExtendedStreamPropertiesData {
+                start_time,
+                end_time,
+                data_bitrate,
+                buffer_size,
+                initial_buffer_fullness,
+                alternate_data_bitrate,
+                alternate_buffer_size,
+                alternate_initial_buffer_fullness,
+                maximum_object_size,
+                flags,
+                stream_number,
+                stream_language_id_index,
+                average_time_per_frame,
+                stream_names,
+                payload_extension_systems,
+                stream_properties_object: stream_properties_object
+                    .map(|x| StreamPropertiesData::parse(x.data))
+                    .map_or(Ok(None), |r| r.map(Some))?
+                    .map(|x| x.1),
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
         let stream_name_count: u16 = self.stream_names.len().try_into()?;
-        let payload_extension_system_count: u16 = self.payload_extension_systems.len().try_into()?;
+        let payload_extension_system_count: u16 =
+            self.payload_extension_systems.len().try_into()?;
         w.write_all(&self.start_time.to_le_bytes())?;
         w.write_all(&self.end_time.to_le_bytes())?;
         w.write_all(&self.data_bitrate.to_le_bytes())?;
@@ -165,9 +191,31 @@ impl<'a> ExtendedStreamPropertiesData<'a> {
     }
 
     pub fn size_of(&self) -> usize {
-        8 + 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 2 + 2 + 8 + 2 + 2 +
-        self.stream_names.iter().map(|x| x.size_of()).sum::<usize>() +
-        self.payload_extension_systems.iter().map(|x| x.size_of()).sum::<usize>() +
-        self.stream_properties_object.as_ref().map(|x| x.size_of()).unwrap_or(0)
+        let mut len = 0;
+        len += 8;
+        len += 8;
+        len += 4;
+        len += 4;
+        len += 4;
+        len += 4;
+        len += 4;
+        len += 4;
+        len += 4;
+        len += 4;
+        len += 2;
+        len += 2;
+        len += 8;
+        len += 2;
+        len += 2;
+        for stream_name in self.stream_names.iter() {
+            len += stream_name.size_of();
+        }
+        for payload_extension_system in self.payload_extension_systems.iter() {
+            len += payload_extension_system.size_of();
+        }
+        if let Some(stream_properties_object) = &self.stream_properties_object {
+            len += stream_properties_object.size_of();
+        }
+        len
     }
 }

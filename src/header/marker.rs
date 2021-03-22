@@ -1,10 +1,12 @@
-use std::{convert::TryInto, io::Write};
-
-use uuid::Uuid;
-use nom::{IResult, error::ParseError, multi::count, number::streaming::{le_u16, le_u32, le_u64}};
-
 use crate::{guid::*, span::Span, widestr::*};
-
+use nom::{
+    error::ParseError,
+    multi::count,
+    number::streaming::{le_u16, le_u32, le_u64},
+    IResult,
+};
+use std::{convert::TryInto, io::Write};
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq)]
 pub struct Marker {
@@ -32,7 +34,17 @@ impl Marker {
         let (input, send_time) = le_u32(input)?;
         let (input, flags) = le_u32(input)?;
         let (input, marker_description) = WideStr::parse_count32(input)?;
-        Ok((input, Self{offset, presentation_time, entry_length, send_time, flags, marker_description}))
+        Ok((
+            input,
+            Self {
+                offset,
+                presentation_time,
+                entry_length,
+                send_time,
+                flags,
+                marker_description,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -46,7 +58,14 @@ impl Marker {
     }
 
     pub fn size_of(&self) -> usize {
-        8 + 8 + 2 + 4 + 4 + self.marker_description.size_of_count32()
+        let mut len = 0;
+        len += 8;
+        len += 8;
+        len += 2;
+        len += 4;
+        len += 4;
+        len += self.marker_description.size_of_count32();
+        len
     }
 }
 
@@ -57,7 +76,15 @@ impl MarkerData {
         let (input, reserved_2) = le_u16(input)?;
         let (input, name) = WideStr::parse_count16(input)?;
         let (input, markers) = count(Marker::parse, markers_count as _)(input)?;
-        Ok((input, Self{reserved_1, reserved_2, name, markers}))
+        Ok((
+            input,
+            Self {
+                reserved_1,
+                reserved_2,
+                name,
+                markers,
+            },
+        ))
     }
 
     pub fn write<T: Write>(&self, w: &mut T) -> Result<(), Box<dyn std::error::Error>> {
@@ -73,6 +100,15 @@ impl MarkerData {
     }
 
     pub fn size_of(&self) -> usize {
-        16 + 4 + 2 + self.name.size_of_count16() + self.markers.iter().map(|x| 1 + x.size_of()).sum::<usize>()
+        let mut len = 0;
+        len += 16;
+        len += 4;
+        len += 2;
+        len += self.name.size_of_count16();
+        for marker in self.markers.iter() {
+            len += 1;
+            len += marker.size_of();
+        }
+        len
     }
 }

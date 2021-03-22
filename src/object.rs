@@ -1,5 +1,4 @@
-
-use nom::{IResult, bytes::streaming::take, error::ParseError, number::streaming::le_u64};
+use nom::{bytes::streaming::take, error::ParseError, number::streaming::le_u64, IResult};
 use uuid::Uuid;
 
 use crate::{guid::*, span::Span};
@@ -16,14 +15,22 @@ pub struct Object<'a> {
     pub data: Span<'a>,
 }
 
-pub fn object_header<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, ObjectHeader, E> {
+pub fn object_header<'a, E: ParseError<Span<'a>>>(
+    input: Span<'a>,
+) -> IResult<Span<'a>, ObjectHeader, E> {
     let (input, guid) = guid(input)?;
     let (input, size) = le_u64(input)?;
-    Ok((input, ObjectHeader{guid, size}))
+    Ok((input, ObjectHeader { guid, size }))
 }
 
 pub fn object<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Object, E> {
     let (input, header) = object_header(input)?;
     let (input, data) = take(header.size - 24)(input)?;
-    Ok((input, Object{guid: header.guid, data}))
+    Ok((
+        input,
+        Object {
+            guid: header.guid,
+            data,
+        },
+    ))
 }

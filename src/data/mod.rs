@@ -1,11 +1,15 @@
 pub mod packets;
 
+use crate::{error::Error, guid::*, span::Span};
 use nom::error::context;
-use nom::{IResult, bytes::streaming::{tag, take}, multi::count, number::streaming::{le_u16, le_u64}};
+use nom::{
+    bytes::streaming::{tag, take},
+    multi::count,
+    number::streaming::{le_u16, le_u64},
+    IResult,
+};
 use packets::DataPacket;
 use uuid::Uuid;
-
-use crate::{error::Error, guid::*, span::Span};
 
 #[derive(Debug, PartialEq)]
 pub struct DataObject<'a> {
@@ -26,18 +30,19 @@ impl<'a> DataObject<'a> {
             let total_packet_len = size - 50;
             let (input, data) = take(total_packet_len)(input)?;
 
-            Ok((input, DataObject{
-                file_id,
-                total_data_packets,
-                reserved,
-                packets: count(
-                    DataPacket::parser(
-                        total_data_packets,
-                        total_packet_len
-                    ),
-                    total_data_packets as usize
-                )(data)?.1
-            }))
+            Ok((
+                input,
+                DataObject {
+                    file_id,
+                    total_data_packets,
+                    reserved,
+                    packets: count(
+                        DataPacket::parser(total_data_packets, total_packet_len),
+                        total_data_packets as usize,
+                    )(data)?
+                    .1,
+                },
+            ))
         })(input)
     }
 }
