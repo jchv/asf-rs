@@ -1,5 +1,4 @@
-use std::{convert::TryInto, fmt, io::Write};
-
+use crate::span::Span;
 use nom::{
     combinator::{complete, eof, map},
     error::ParseError,
@@ -8,8 +7,7 @@ use nom::{
     sequence::terminated,
     IResult,
 };
-
-use crate::span::Span;
+use std::{convert::TryInto, fmt, io::Write};
 
 #[derive(PartialEq)]
 pub struct WideStr(Vec<u16>);

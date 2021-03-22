@@ -1,6 +1,5 @@
-use std::{env::args, fs::File, io::Read};
-
 use asf::parse;
+use std::{env::args, fs::File, io::Read};
 
 fn main() {
     for name in args().skip(1) {

@@ -2,6 +2,7 @@ extern crate nom;
 extern crate nom_locate;
 extern crate uuid;
 
+pub(crate) mod combinators;
 pub mod data;
 pub mod error;
 pub mod guid;
@@ -11,13 +12,10 @@ pub mod object;
 pub mod span;
 pub mod widestr;
 
-pub(crate) mod combinators;
-
-use nom::{Err, IResult};
-
 use crate::{
     data::DataObject, error::Error, header::HeaderObjects, index::IndexObjects, span::Span,
 };
+use nom::{Err, IResult};
 
 #[derive(Debug, PartialEq)]
 pub struct Container<'a> {

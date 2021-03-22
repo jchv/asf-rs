@@ -27,21 +27,17 @@ pub mod stream_prioritization;
 pub mod stream_properties;
 pub mod timecode_index_parameters;
 
-use self::bitrate_mutual_exclusion::BitrateMutualExclusionData;
-use self::codec_list::CodecListData;
-use self::content_branding::ContentBrandingData;
-use self::content_description::ContentDescriptionData;
-use self::content_encryption::ContentEncryptionData;
-use self::digital_signature::DigitalSignatureData;
-use self::error_correction::ErrorCorrectionData;
-use self::extended_content_description::ExtendedContentDescriptionData;
-use self::extended_content_encryption::ExtendedContentEncryptionData;
-use self::file_properties::FilePropertiesData;
-use self::header_extension::HeaderExtensionData;
-use self::marker::MarkerData;
-use self::script_command::ScriptCommandData;
-use self::stream_bitrate_properties::StreamBitratePropertiesData;
-use self::stream_properties::StreamPropertiesData;
+use self::{
+    bitrate_mutual_exclusion::BitrateMutualExclusionData, codec_list::CodecListData,
+    content_branding::ContentBrandingData, content_description::ContentDescriptionData,
+    content_encryption::ContentEncryptionData, digital_signature::DigitalSignatureData,
+    error_correction::ErrorCorrectionData,
+    extended_content_description::ExtendedContentDescriptionData,
+    extended_content_encryption::ExtendedContentEncryptionData,
+    file_properties::FilePropertiesData, header_extension::HeaderExtensionData, marker::MarkerData,
+    script_command::ScriptCommandData, stream_bitrate_properties::StreamBitratePropertiesData,
+    stream_properties::StreamPropertiesData,
+};
 use crate::{guid::*, object::*, span::Span};
 use nom::{
     bytes::streaming::{tag, take},

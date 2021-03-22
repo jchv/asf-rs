@@ -3,21 +3,18 @@ use crate::{
     error::Error,
     span::Span,
 };
-use nom::bits::streaming::tag as tag_bits;
-use nom::bits::streaming::take as take_bits;
 use nom::{
-    bits::bits,
-    combinator::{map, peek},
-    multi::many0,
-    number::streaming::{le_u16, le_u32, le_u8},
-    IResult,
-};
-use nom::{
+    bits::{
+        bits,
+        streaming::{tag as tag_bits, take as take_bits},
+    },
     branch::alt,
     bytes::streaming::take,
-    combinator::{complete, rest, rest_len, value},
+    combinator::{complete, map, peek, rest, rest_len, value},
     error::context,
-    multi::count,
+    multi::{count, many0},
+    number::streaming::{le_u16, le_u32, le_u8},
+    IResult,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -147,9 +144,7 @@ impl ErrorCorrectionFlag {
 }
 
 impl FieldType {
-    pub fn parse(
-        input: (Span, usize),
-    ) -> IResult<(Span, usize), Self, Error<(Span, usize)>> {
+    pub fn parse(input: (Span, usize)) -> IResult<(Span, usize), Self, Error<(Span, usize)>> {
         context(
             "FieldType",
             nom::combinator::map(nom::bits::complete::take(2usize), |x: u8| match x {
@@ -346,12 +341,8 @@ impl<'a> PayloadData<'a> {
         property_flags: PropertyFlags,
     ) -> impl Fn(Span<'a>) -> IResult<Span<'a>, PayloadData<'a>, Error<Span<'a>>> {
         move |input: Span| match multiple {
-            MultiplePayloadsFlag::SinglePayload => {
-                Self::parser_single(property_flags)(input)
-            }
-            MultiplePayloadsFlag::MultiplePayloads => {
-                Self::parser_multi(property_flags)(input)
-            }
+            MultiplePayloadsFlag::SinglePayload => Self::parser_single(property_flags)(input),
+            MultiplePayloadsFlag::MultiplePayloads => Self::parser_multi(property_flags)(input),
         }
     }
 

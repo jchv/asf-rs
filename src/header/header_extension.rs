@@ -1,16 +1,14 @@
-use super::advanced_content_encryption::AdvancedContentEncryptionData;
-use super::advanced_mutual_exclusion::AdvancedMutualExclusionData;
-use super::bandwidth_sharing::BandwidthSharingData;
-use super::compatibility::CompatibilityData;
-use super::extended_stream_properties::ExtendedStreamPropertiesData;
-use super::group_mutual_exclusion::GroupMutualExclusionData;
-use super::index_parameters::IndexParametersData;
-use super::language_list::LanguageListData;
-use super::media_object_index_parameters::MediaObjectIndexParametersData;
-use super::metadata::MetadataData;
-use super::metadata_library::MetadataLibraryData;
-use super::stream_prioritization::StreamPrioritizationData;
-use super::timecode_index_parameters::TimecodeIndexParametersData;
+use super::{
+    advanced_content_encryption::AdvancedContentEncryptionData,
+    advanced_mutual_exclusion::AdvancedMutualExclusionData,
+    bandwidth_sharing::BandwidthSharingData, compatibility::CompatibilityData,
+    extended_stream_properties::ExtendedStreamPropertiesData,
+    group_mutual_exclusion::GroupMutualExclusionData, index_parameters::IndexParametersData,
+    language_list::LanguageListData, media_object_index_parameters::MediaObjectIndexParametersData,
+    metadata::MetadataData, metadata_library::MetadataLibraryData,
+    stream_prioritization::StreamPrioritizationData,
+    timecode_index_parameters::TimecodeIndexParametersData,
+};
 use crate::{guid::*, object::*, span::Span};
 use nom::{
     bytes::streaming::take,

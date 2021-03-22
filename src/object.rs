@@ -1,7 +1,6 @@
+use crate::{guid::*, span::Span};
 use nom::{bytes::streaming::take, error::ParseError, number::streaming::le_u64, IResult};
 use uuid::Uuid;
-
-use crate::{guid::*, span::Span};
 
 #[derive(Debug, PartialEq)]
 pub struct ObjectHeader {
